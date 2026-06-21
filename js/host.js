@@ -17,13 +17,13 @@ async function createRoom() {
   document.getElementById("roomId").textContent = roomId;
   statusEl.textContent = "Initializing connection... ⏳";
 
-  // Standard fallback ICE configuration that works over NAT loopbacks
   const pc = new RTCPeerConnection({
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:global.stun.twilio.com:3478" },
       { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
     ],
+    // Force WebRTC to prioritize relay connections
     iceTransportPolicy: "all"
   });
 
@@ -35,8 +35,11 @@ async function createRoom() {
   };
 
   const hostCandidates = collection(db, "rooms", roomId, "hostCandidates");
+  
   pc.onicecandidate = async (event) => {
     if (event.candidate) {
+      // FIX: If it's a local 'host' candidate, skip it. Only send srflx (STUN) or relay (TURN) paths!
+      if (event.candidate.candidate.includes("typ host")) return;
       await addDoc(hostCandidates, event.candidate.toJSON());
     }
   };
@@ -70,7 +73,6 @@ async function createRoom() {
   document.getElementById("qrcode").innerHTML = "";
   new QRCode(document.getElementById("qrcode"), joinUrl);
 
-  // Listen for the answer immediately
   let listeningToGuests = false;
   onSnapshot(doc(db, "rooms", roomId), async (snapshot) => {
     const data = snapshot.data();
