@@ -12,23 +12,18 @@ const roomId = new URLSearchParams(location.search).get("room");
 const roomRef = doc(db, "rooms", roomId);
 const status = document.getElementById("status");
 
-status.textContent = "Initializing phone side... ⏳";
+status.textContent = "Initializing... ⏳";
 
 let dataChannel;
 
 try {
   const pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:global.stun.twilio.com:3478" },
-      { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
-    ]
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
   });
 
   pc.oniceconnectionstatechange = () => { status.textContent = `ICE: ${pc.iceConnectionState}`; };
   pc.onconnectionstatechange = () => { status.textContent = `Conn: ${pc.connectionState}`; };
 
-  // Classic WebRTC: Phone listens for the host's data channel incoming event
   pc.ondatachannel = (event) => {
     dataChannel = event.channel;
     dataChannel.onopen = () => { status.textContent = "Connected to Laptop! ✅"; };
@@ -48,11 +43,6 @@ try {
       await updateDoc(roomRef, { joined: true });
       const roomSnap = await getDoc(roomRef);
       const roomData = roomSnap.data();
-
-      if (!roomData || !roomData.offer) {
-        status.textContent = "Error: Room offer not found! ❌";
-        return;
-      }
 
       await pc.setRemoteDescription(new RTCSessionDescription(roomData.offer));
 
@@ -85,7 +75,8 @@ try {
           return;
         }
       }
-      const sensorData = { alpha: 0, beta: 0, gamma: 0, ax: 0, ay: 0, az: 0 };
+      status.textContent = "Sensors Streaming! 🟢";
+      const sensorData = { alpha: 0, beta: 0, gamma: 0 };
       window.addEventListener("deviceorientation", (event) => {
         sensorData.alpha = Math.round(event.alpha || 0);
         sensorData.beta = Math.round(event.beta || 0);
@@ -94,12 +85,7 @@ try {
         document.getElementById("betaVal").textContent = sensorData.beta;
         document.getElementById("gammaVal").textContent = sensorData.gamma;
       });
-      window.addEventListener("devicemotion", (event) => {
-        const accel = event.accelerationIncludingGravity;
-        sensorData.ax = Math.round((accel?.x || 0) * 100) / 100;
-        sensorData.ay = Math.round((accel?.y || 0) * 100) / 100;
-        sensorData.az = Math.round((accel?.z || 0) * 100) / 100;
-      });
+
       setInterval(() => {
         if (dataChannel && dataChannel.readyState === "open") {
           dataChannel.send(JSON.stringify(sensorData));
