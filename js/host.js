@@ -12,30 +12,21 @@ document.getElementById("startGameBtn").addEventListener("click", () => {
   if (window.gameScene) window.gameScene.startGame();
 });
 
-// Calibration global states
-let baseGamma = 0, baseBeta = 0;
-// Track blade slice vectors globally for Phaser
+// Blade coordinates controlled by physical velocity vectors
 window.bladeX = 400;
 window.bladeY = 250;
 window.isSlashing = false;
 window.score = 0;
 
-// --- PHASER ENGINE CONFIGURATION ---
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
-  preload() {
-    // Canvas graphics generated programmatically so you don't need asset files
-  }
+  preload() {}
   create() {
     window.gameScene = this;
     this.fruits = this.physics.add.group();
     this.gameRunning = false;
-
-    // Graphics object to render the sword trails
     this.trailGraphics = this.add.graphics();
     this.trailPoints = [];
-
-    // Spawn routine loop tracker
     this.spawnTimer = null;
   }
 
@@ -46,7 +37,7 @@ class GameScene extends Phaser.Scene {
     
     if(this.spawnTimer) this.spawnTimer.remove();
     this.spawnTimer = this.time.addEvent({
-      delay: 1200,
+      delay: 1000,
       callback: this.spawnFruit,
       callbackScope: this,
       loop: true
@@ -56,14 +47,13 @@ class GameScene extends Phaser.Scene {
   spawnFruit() {
     if (!this.gameRunning) return;
     
-    // Choose starting X coordinate randomly across screen horizon
-    const x = Phaser.Math.Between(150, 650);
-    const y = 520; // Spawn just below viewport boundary
+    // Spawns low and launches way up high
+    const x = Phaser.Math.Between(100, 700);
+    const y = 530; 
 
-    const fruitColors = [0xff5722, 0x4caf50, 0xffeb3b, 0xe91e63];
+    const fruitColors = [0xff5722, 0x4caf50, 0xffeb3b, 0xe91e63, 0x9c27b0];
     const targetColor = Phaser.Math.RND.pick(fruitColors);
 
-    // Draw temporary colored circles representing fruits programmatically
     const circleGraphics = this.make.graphics({ x: 0, y: 0, add: false });
     circleGraphics.fillStyle(targetColor, 1);
     circleGraphics.fillCircle(25, 25, 25);
@@ -72,24 +62,22 @@ class GameScene extends Phaser.Scene {
     const fruit = this.physics.add.sprite(x, y, 'fruit_' + targetColor);
     fruit.setCircle(25);
     
-    // Gravity physics engine configuration to create parabolic arc trajectories
-    fruit.setGravityY(350);
-    fruit.setVelocityX(Phaser.Math.Between(-100, 100));
-    fruit.setVelocityY(Phaser.Math.Between(-450, -550)); // Launch upwards
+    // Tweak these values to adjust the heights and flight arcs of the fruit objects
+    fruit.setGravityY(280); // Lower gravity so they stay in air longer
+    fruit.setVelocityX(Phaser.Math.Between(-120, 120));
+    fruit.setVelocityY(Phaser.Math.Between(-500, -620)); // High upward blast speed
     
     this.fruits.add(fruit);
   }
 
   update() {
-    // 1. Maintain the blade trail arrays
     if (window.isSlashing) {
       this.trailPoints.push({ x: window.bladeX, y: window.bladeY });
-      if (this.trailPoints.length > 8) this.trailPoints.shift();
+      if (this.trailPoints.length > 10) this.trailPoints.shift();
     } else {
       if(this.trailPoints.length > 0) this.trailPoints.shift();
     }
 
-    // 2. Render the Glowing Sword Slice Effect
     this.trailGraphics.clear();
     if (this.trailPoints.length > 1) {
       for (let i = 1; i < this.trailPoints.length; i++) {
@@ -97,16 +85,14 @@ class GameScene extends Phaser.Scene {
         const p2 = this.trailPoints[i];
         const alpha = i / this.trailPoints.length;
         
-        this.trailGraphics.lineStyle(6, 0x00e5ff, alpha);
+        this.trailGraphics.lineStyle(8, 0x00e5ff, alpha); // Thicker neon line
         this.trailGraphics.strokeLineShape(new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y));
         
-        // Inner white edge core accent
-        this.trailGraphics.lineStyle(2, 0xffffff, alpha);
+        this.trailGraphics.lineStyle(3, 0xffffff, alpha);
         this.trailGraphics.strokeLineShape(new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y));
       }
     }
 
-    // 3. Collision Intersection Detections (Cut Effect Execution)
     if (this.gameRunning && this.trailPoints.length > 1) {
       const lastPoint = this.trailPoints[this.trailPoints.length - 1];
       const prevPoint = this.trailPoints[this.trailPoints.length - 2];
@@ -114,37 +100,31 @@ class GameScene extends Phaser.Scene {
 
       this.fruits.getChildren().forEach((fruit) => {
         if (fruit && fruit.active) {
-          const bounds = fruit.getBounds();
-          // Check if the current line slice segment cuts right through the fruit boundary frame
-          if (Phaser.Geom.Intersects.LineToRectangle(slashLine, bounds)) {
+          if (Phaser.Geom.Intersects.LineToRectangle(slashLine, fruit.getBounds())) {
             this.sliceFruit(fruit);
           }
         }
       });
     }
 
-    // Clear fallen offscreen dead bodies to save computer memory
     this.fruits.getChildren().forEach((fruit) => {
-      if (fruit.y > 550) fruit.destroy();
+      if (fruit.y > 560) fruit.destroy();
     });
   }
 
   sliceFruit(fruit) {
     const fx = fruit.x;
     const fy = fruit.y;
-    fruit.destroy(); // Remove whole item asset
+    fruit.destroy();
 
     window.score += 10;
     scoreTextEl.textContent = window.score;
 
-    // Spawn splitting juice splash blast particles on cut execution point
-    const splash = this.add.graphics();
-    splash.fillStyle(0xffffff, 1);
-    for(let i=0; i<8; i++){
-      const part = this.add.circle(fx, fy, Phaser.Math.Between(3, 6), 0xff9800);
+    for(let i=0; i<10; i++){
+      const part = this.add.circle(fx, fy, Phaser.Math.Between(3, 6), 0xffc107);
       this.physics.add.existing(part);
-      part.body.setVelocity(Phaser.Math.Between(-200, 200), Phaser.Math.Between(-200, 200));
-      this.time.delayedCall(300, () => part.destroy());
+      part.body.setVelocity(Phaser.Math.Between(-250, 250), Phaser.Math.Between(-250, 250));
+      this.time.delayedCall(400, () => part.destroy());
     }
   }
 }
@@ -154,18 +134,16 @@ const config = {
   width: 800,
   height: 500,
   parent: 'arena',
-  backgroundColor: '#11111d',
   physics: { default: 'arcade', arcade: { debug: false } },
   scene: GameScene
 };
 new Phaser.Game(config);
 
-// --- WEBRTC SIGNALING PIPELINE HANDLERS ---
 async function createRoom() {
   try {
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
     document.getElementById("roomId").textContent = roomId;
-    statusEl.textContent = "Setting up WebRTC Router... ⏳";
+    statusEl.textContent = "Setting up WebRTC... ⏳";
 
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -175,7 +153,7 @@ async function createRoom() {
     pc.onconnectionstatechange = () => {
       if(pc.connectionState === "connected") {
         statusEl.textContent = "Phone linked!";
-        startOverlay.style.display = "flex"; // Unveil Game Initiation UI Overlay
+        startOverlay.style.display = "flex";
       }
     };
 
@@ -191,20 +169,11 @@ async function createRoom() {
       try {
         const data = JSON.parse(event.data);
 
-        if (data.isFirst) {
-          baseGamma = data.gamma;
-          baseBeta = data.beta;
-          return;
-        }
+        // Convert the phone's physical linear translation forces into screen pointer tracking coordinates
+        // Using high amplification multipliers (* 45) turns fast spatial changes into huge knife slashes
+        window.bladeX = 400 - (data.ax * 45); 
+        window.bladeY = 250 + (data.ay * 45);
 
-        // Relative tracking updates translated directly to game dimensions
-        const relativeGamma = data.gamma - baseGamma;
-        const relativeBeta = data.beta - baseBeta;
-
-        window.bladeX = 400 + (relativeGamma * 12); // High multiplier for instant snappy slashes
-        window.bladeY = 250 + (relativeBeta * 12);
-
-        // Constrain bounding boxes within Phaser coordinate framework
         window.bladeX = Math.max(0, Math.min(800, window.bladeX));
         window.bladeY = Math.max(0, Math.min(500, window.bladeY));
 
