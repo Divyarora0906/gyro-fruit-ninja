@@ -97,9 +97,11 @@ async function createRoom() {
   console.log("Join URL:", joinUrl);
 
   onSnapshot(collection(db, "rooms", roomId, "guestCandidates"), (snapshot) => {
+    if (!pc.remoteDescription) return;
     snapshot.docChanges().forEach(async (change) => {
       if (change.type === "added") {
         await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        console.log("REMOTE DESCRIPTION SET");
       }
     });
   });

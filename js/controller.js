@@ -65,9 +65,15 @@ await updateDoc(roomRef, {
 });
 
 onSnapshot(collection(db, "rooms", roomId, "hostCandidates"), (snapshot) => {
+  if (!pc.remoteDescription) return;
+
   snapshot.docChanges().forEach(async (change) => {
     if (change.type === "added") {
-      await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+      } catch (err) {
+        console.error(err);
+      }
     }
   });
 });
