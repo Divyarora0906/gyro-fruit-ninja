@@ -17,13 +17,31 @@ async function createRoom() {
   const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
   document.getElementById("roomId").textContent = roomId;
 
+  // Using a highly stable public open-relay configuration
   const pc = new RTCPeerConnection({
     iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:global.stun.twilio.com:3478" },
       {
-        urls: "stun:stun.l.google.com:19302",
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelayproject",
+        credential: "openrelayproject",
       },
     ],
   });
+
+  // Track the actual connection states on screen
+  pc.oniceconnectionstatechange = () => {
+    statusEl.textContent = `ICE State: ${pc.iceConnectionState} 📡`;
+  };
+  pc.onconnectionstatechange = () => {
+    statusEl.textContent = `Conn State: ${pc.connectionState} 🔗`;
+  };
 
   const hostCandidates = collection(db, "rooms", roomId, "hostCandidates");
 
@@ -33,9 +51,10 @@ async function createRoom() {
     }
   };
 
-  const channel = pc.createDataChannel("controller");
+  const channel = pc.createDataChannel("controller", { negotiated: true, id: 0 });
+
   channel.onopen = () => {
-    console.log("DataChannel Open");
+    statusEl.textContent = "Data Channel OPEN! Ready 🚀";
   };
 
   channel.onmessage = (event) => {
@@ -80,24 +99,16 @@ async function createRoom() {
 
   document.getElementById("qrcode").innerHTML = "";
   new QRCode(document.getElementById("qrcode"), joinUrl);
-  console.log("Join URL:", joinUrl);
 
-  // Variable to track if we started listening to guest ICE candidates
   let listeningToGuests = false;
 
   onSnapshot(doc(db, "rooms", roomId), async (snapshot) => {
     const data = snapshot.data();
     if (!data) return;
 
-    if (data.joined) {
-      statusEl.textContent = "Phone Connected ✅";
-    }
-
     if (data.answer && !pc.currentRemoteDescription) {
       await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-      console.log("ANSWER RECEIVED & SET");
 
-      // FIX: Start listening to guest candidates ONLY after setting the remote description
       if (!listeningToGuests) {
         listeningToGuests = true;
         onSnapshot(collection(db, "rooms", roomId, "guestCandidates"), (snapshot) => {
@@ -105,9 +116,8 @@ async function createRoom() {
             if (change.type === "added") {
               try {
                 await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-                console.log("GUEST ICE CANDIDATE ADDED");
               } catch (e) {
-                console.error("Error adding guest candidate:", e);
+                console.error(e);
               }
             }
           });

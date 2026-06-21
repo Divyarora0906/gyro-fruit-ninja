@@ -10,31 +10,38 @@ import {
 
 const roomId = new URLSearchParams(location.search).get("room");
 const roomRef = doc(db, "rooms", roomId);
+const status = document.getElementById("status");
 
 const pc = new RTCPeerConnection({
   iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:global.stun.twilio.com:3478" },
     {
-      urls: "stun:stun.relay.metered.ca:80",
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject",
     },
     {
-      urls: "turn:global.relay.metered.ca:80",
-      username: "metered",
-      credential: "Password1234",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: "metered",
-      credential: "Password1234",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443?transport=tcp",
-      username: "metered",
-      credential: "Password1234",
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject",
     },
   ],
 });
 
-let dataChannel;
+// Track the states on mobile screen
+pc.oniceconnectionstatechange = () => {
+  status.textContent = `ICE: ${pc.iceConnectionState}`;
+};
+pc.onconnectionstatechange = () => {
+  status.textContent = `Conn: ${pc.connectionState}`;
+};
+
+const dataChannel = pc.createDataChannel("controller", { negotiated: true, id: 0 });
+
+dataChannel.onopen = () => {
+  status.textContent = "Connected to Laptop! ✅";
+};
 
 const guestCandidates = collection(db, "rooms", roomId, "guestCandidates");
 
@@ -42,14 +49,6 @@ pc.onicecandidate = async (event) => {
   if (event.candidate) {
     await addDoc(guestCandidates, event.candidate.toJSON());
   }
-};
-
-pc.ondatachannel = (event) => {
-  dataChannel = event.channel;
-  dataChannel.onopen = () => {
-    console.log("CHANNEL OPEN");
-    dataChannel.send("HELLO FROM PHONE");
-  };
 };
 
 document.getElementById("room").textContent = `Room: ${roomId}`;
@@ -61,18 +60,15 @@ await updateDoc(roomRef, {
 const roomSnap = await getDoc(roomRef);
 const roomData = roomSnap.data();
 
-// Set up the offer first
 await pc.setRemoteDescription(new RTCSessionDescription(roomData.offer));
 
-// FIX: Now that remote description is set, we can safely listen for host candidates
 onSnapshot(collection(db, "rooms", roomId, "hostCandidates"), (snapshot) => {
   snapshot.docChanges().forEach(async (change) => {
     if (change.type === "added") {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-        console.log("HOST ICE CANDIDATE ADDED");
       } catch (err) {
-        console.error("Error adding host candidate:", err);
+        console.error(err);
       }
     }
   });
@@ -91,8 +87,6 @@ await updateDoc(roomRef, {
 document.getElementById("startBtn").addEventListener("click", startSensors);
 
 async function startSensors() {
-  const status = document.getElementById("status");
-
   try {
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
@@ -100,21 +94,12 @@ async function startSensors() {
     ) {
       const permission = await DeviceOrientationEvent.requestPermission();
       if (permission !== "granted") {
-        status.textContent = "Permission Denied";
+        status.textContent = "Permission Denied ❌";
         return;
       }
     }
 
-    status.textContent = "Sensors Active ✅";
-
-    const sensorData = {
-      alpha: 0,
-      beta: 0,
-      gamma: 0,
-      ax: 0,
-      ay: 0,
-      az: 0,
-    };
+    const sensorData = { alpha: 0, beta: 0, gamma: 0, ax: 0, ay: 0, az: 0 };
 
     window.addEventListener("deviceorientation", (event) => {
       sensorData.alpha = Math.round(event.alpha || 0);
@@ -139,7 +124,6 @@ async function startSensors() {
       }
     }, 50);
   } catch (err) {
-    console.error(err);
     status.textContent = "Sensor Error";
   }
 }
