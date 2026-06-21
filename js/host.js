@@ -15,16 +15,18 @@ document.getElementById("createRoomBtn").addEventListener("click", createRoom);
 async function createRoom() {
   const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
   document.getElementById("roomId").textContent = roomId;
-  statusEl.textContent = "Initializing connection... ⏳";
+  statusEl.textContent = "Connecting via cloud relay... ⏳";
 
   const pc = new RTCPeerConnection({
     iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:global.stun.twilio.com:3478" },
-      { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
+      {
+        urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      }
     ],
-    // Force WebRTC to prioritize relay connections
-    iceTransportPolicy: "all"
+    // CRITICAL: Force WebRTC to ONLY use the TURN server, ignoring all local/hotspot paths
+    iceTransportPolicy: "relay"
   });
 
   pc.oniceconnectionstatechange = () => {
@@ -35,11 +37,8 @@ async function createRoom() {
   };
 
   const hostCandidates = collection(db, "rooms", roomId, "hostCandidates");
-  
   pc.onicecandidate = async (event) => {
     if (event.candidate) {
-      // FIX: If it's a local 'host' candidate, skip it. Only send srflx (STUN) or relay (TURN) paths!
-      if (event.candidate.candidate.includes("typ host")) return;
       await addDoc(hostCandidates, event.candidate.toJSON());
     }
   };

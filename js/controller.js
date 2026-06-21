@@ -12,15 +12,18 @@ const roomId = new URLSearchParams(location.search).get("room");
 const roomRef = doc(db, "rooms", roomId);
 const status = document.getElementById("status");
 
-status.textContent = "Connecting... ⏳";
+status.textContent = "Connecting via cloud relay... ⏳";
 
 const pc = new RTCPeerConnection({
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:global.stun.twilio.com:3478" },
-    { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
+    {
+      urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    }
   ],
-  iceTransportPolicy: "all"
+  // CRITICAL: Force WebRTC to ONLY use the TURN server, ignoring all local/hotspot paths
+  iceTransportPolicy: "relay"
 });
 
 pc.oniceconnectionstatechange = () => { status.textContent = `ICE: ${pc.iceConnectionState}`; };
@@ -30,11 +33,8 @@ const dataChannel = pc.createDataChannel("controller", { negotiated: true, id: 0
 dataChannel.onopen = () => { status.textContent = "Connected to Laptop! ✅"; };
 
 const guestCandidates = collection(db, "rooms", roomId, "guestCandidates");
-
 pc.onicecandidate = async (event) => {
   if (event.candidate) {
-    // FIX: Skip local 'host' candidates to bypass hotspot isolation blocks
-    if (event.candidate.candidate.includes("typ host")) return;
     await addDoc(guestCandidates, event.candidate.toJSON());
   }
 };
