@@ -9,12 +9,9 @@ import {
   onSnapshot,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-const roomId =
-  new URLSearchParams(location.search)
-    .get("room");
+const roomId = new URLSearchParams(location.search).get("room");
 
-const roomRef =
-  doc(db, "rooms", roomId);
+const roomRef = doc(db, "rooms", roomId);
 
 const pc = new RTCPeerConnection({
   iceServers: [
@@ -26,154 +23,75 @@ const pc = new RTCPeerConnection({
 
 let dataChannel;
 
-const guestCandidates = collection(
-  db,
-  "rooms",
-  roomId,
-  "guestCandidates"
-);
+const guestCandidates = collection(db, "rooms", roomId, "guestCandidates");
 
 pc.onicecandidate = async (event) => {
-
   if (event.candidate) {
-
-    await addDoc(
-      guestCandidates,
-      event.candidate.toJSON()
-    );
-
+    await addDoc(guestCandidates, event.candidate.toJSON());
   }
-
 };
 
 pc.ondatachannel = (event) => {
-
-  dataChannel =
-    event.channel;
+  dataChannel = event.channel;
 
   dataChannel.onopen = () => {
+    console.log("CHANNEL OPEN");
 
-    console.log(
-      "CHANNEL OPEN"
-    );
-
-    dataChannel.send(
-      "HELLO FROM PHONE"
-    );
-
+    dataChannel.send("HELLO FROM PHONE");
   };
-
 };
 
-document.getElementById("room").textContent =
-  `Room: ${roomId}`;
+document.getElementById("room").textContent = `Room: ${roomId}`;
 
 await updateDoc(roomRef, {
   joined: true,
 });
 
-const roomSnap =
-  await getDoc(roomRef);
+const roomSnap = await getDoc(roomRef);
 
-const roomData =
-  roomSnap.data();
+const roomData = roomSnap.data();
 
-await pc.setRemoteDescription(
-  new RTCSessionDescription(
-    roomData.offer
-  )
-);
+await pc.setRemoteDescription(new RTCSessionDescription(roomData.offer));
 
-const answer =
-  await pc.createAnswer();
+const answer = await pc.createAnswer();
 
-await pc.setLocalDescription(
-  answer
-);
+await pc.setLocalDescription(answer);
 
-await updateDoc(
-  roomRef,
-  {
-    answer: {
-      type: answer.type,
-      sdp: answer.sdp,
-    },
-  }
-);
+await updateDoc(roomRef, {
+  answer: {
+    type: answer.type,
+    sdp: answer.sdp,
+  },
+});
 
-onSnapshot(
-  collection(
-    db,
-    "rooms",
-    roomId,
-    "hostCandidates"
-  ),
-  (snapshot) => {
+onSnapshot(collection(db, "rooms", roomId, "hostCandidates"), (snapshot) => {
+  snapshot.docChanges().forEach(async (change) => {
+    if (change.type === "added") {
+      await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+    }
+  });
+});
 
-    snapshot.docChanges()
-      .forEach(async (change) => {
-
-        if (
-          change.type === "added"
-        ) {
-
-          await pc.addIceCandidate(
-            new RTCIceCandidate(
-              change.doc.data()
-            )
-          );
-
-        }
-
-      });
-
-  }
-);
-
-document
-  .getElementById("startBtn")
-  .addEventListener(
-    "click",
-    startSensors
-  );
+document.getElementById("startBtn").addEventListener("click", startSensors);
 
 async function startSensors() {
-
-  const status =
-    document.getElementById(
-      "status"
-    );
+  const status = document.getElementById("status");
 
   try {
-
     if (
-      typeof DeviceOrientationEvent !==
-        "undefined" &&
-      typeof DeviceOrientationEvent
-        .requestPermission ===
-        "function"
+      typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function"
     ) {
+      const permission = await DeviceOrientationEvent.requestPermission();
 
-      const permission =
-        await DeviceOrientationEvent
-          .requestPermission();
-
-      if (
-        permission !==
-        "granted"
-      ) {
-
-        status.textContent =
-          "Permission Denied";
+      if (permission !== "granted") {
+        status.textContent = "Permission Denied";
 
         return;
-
       }
-
     }
 
-    status.textContent =
-      "Sensors Active ✅";
+    status.textContent = "Sensors Active ✅";
 
     const sensorData = {
       alpha: 0,
@@ -184,81 +102,38 @@ async function startSensors() {
       az: 0,
     };
 
-    window.addEventListener(
-      "deviceorientation",
-      (event) => {
+    window.addEventListener("deviceorientation", (event) => {
+      sensorData.alpha = Math.round(event.alpha || 0);
 
-        sensorData.alpha =
-          Math.round(
-            event.alpha || 0
-          );
+      sensorData.beta = Math.round(event.beta || 0);
 
-        sensorData.beta =
-          Math.round(
-            event.beta || 0
-          );
+      sensorData.gamma = Math.round(event.gamma || 0);
 
-        sensorData.gamma =
-          Math.round(
-            event.gamma || 0
-          );
+      document.getElementById("alphaVal").textContent = sensorData.alpha;
 
-      }
-    );
+      document.getElementById("betaVal").textContent = sensorData.beta;
 
-    window.addEventListener(
-      "devicemotion",
-      (event) => {
+      document.getElementById("gammaVal").textContent = sensorData.gamma;
+    });
 
-        const accel =
-          event.accelerationIncludingGravity;
+    window.addEventListener("devicemotion", (event) => {
+      const accel = event.accelerationIncludingGravity;
 
-        sensorData.ax =
-          Math.round(
-            (accel?.x || 0) *
-              100
-          ) / 100;
+      sensorData.ax = Math.round((accel?.x || 0) * 100) / 100;
 
-        sensorData.ay =
-          Math.round(
-            (accel?.y || 0) *
-              100
-          ) / 100;
+      sensorData.ay = Math.round((accel?.y || 0) * 100) / 100;
 
-        sensorData.az =
-          Math.round(
-            (accel?.z || 0) *
-              100
-          ) / 100;
-
-      }
-    );
+      sensorData.az = Math.round((accel?.z || 0) * 100) / 100;
+    });
 
     setInterval(() => {
-
-      if (
-        dataChannel &&
-        dataChannel.readyState ===
-          "open"
-      ) {
-
-        dataChannel.send(
-          JSON.stringify(
-            sensorData
-          )
-        );
-
+      if (dataChannel && dataChannel.readyState === "open") {
+        dataChannel.send(JSON.stringify(sensorData));
       }
-
     }, 50);
-
   } catch (err) {
-
     console.error(err);
 
-    status.textContent =
-      "Sensor Error";
-
+    status.textContent = "Sensor Error";
   }
-
 }

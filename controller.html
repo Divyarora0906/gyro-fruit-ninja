@@ -1,23 +1,21 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Controller</title>
-</head>
-<body>
+  <head>
+    <title>Controller</title>
+  </head>
+  <body>
+    <h1>Controller</h1>
 
-  <h1>Controller</h1>
+    <p id="room"></p>
 
-  <p id="room"></p>
+    <button id="startBtn">Enable Sensors</button>
 
-  <button id="startBtn">
-    Enable Sensors
-  </button>
+    <p id="status">Waiting...</p>
 
-  <p id="status">
-    Waiting...
-  </p>
+    <p>Alpha: <span id="alphaVal">0</span></p>
+    <p>Beta: <span id="betaVal">0</span></p>
+    <p>Gamma: <span id="gammaVal">0</span></p>
 
-  <script type="module" src="./js/controller.js"></script>
-
-</body>
+    <script type="module" src="./js/controller.js"></script>
+  </body>
 </html>
