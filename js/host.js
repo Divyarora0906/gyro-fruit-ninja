@@ -1,6 +1,5 @@
 const cursor = document.getElementById("cursor");
 import { db } from "./firebase.js";
-
 import {
   doc,
   setDoc,
@@ -16,7 +15,6 @@ document.getElementById("createRoomBtn").addEventListener("click", createRoom);
 
 async function createRoom() {
   const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-
   document.getElementById("roomId").textContent = roomId;
 
   const pc = new RTCPeerConnection({
@@ -36,7 +34,6 @@ async function createRoom() {
   };
 
   const channel = pc.createDataChannel("controller");
-
   channel.onopen = () => {
     console.log("DataChannel Open");
   };
@@ -44,25 +41,17 @@ async function createRoom() {
   channel.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-
       const x = 385 + data.gamma * 4;
-
       const y = 235 + data.beta * 4;
 
       cursor.style.left = `${x}px`;
-
       cursor.style.top = `${y}px`;
 
       document.getElementById("alpha").textContent = data.alpha ?? 0;
-
       document.getElementById("beta").textContent = data.beta ?? 0;
-
       document.getElementById("gamma").textContent = data.gamma ?? 0;
-
       document.getElementById("ax").textContent = data.ax ?? 0;
-
       document.getElementById("ay").textContent = data.ay ?? 0;
-
       document.getElementById("az").textContent = data.az ?? 0;
     } catch {
       console.log("Message:", event.data);
@@ -75,7 +64,6 @@ async function createRoom() {
   });
 
   const offer = await pc.createOffer();
-
   await pc.setLocalDescription(offer);
 
   await updateDoc(doc(db, "rooms", roomId), {
@@ -87,28 +75,18 @@ async function createRoom() {
 
   const joinUrl = `${location.origin}${location.pathname.replace(
     "index.html",
-    "",
+    ""
   )}controller.html?room=${roomId}`;
 
   document.getElementById("qrcode").innerHTML = "";
-
   new QRCode(document.getElementById("qrcode"), joinUrl);
-
   console.log("Join URL:", joinUrl);
 
-  onSnapshot(collection(db, "rooms", roomId, "guestCandidates"), (snapshot) => {
-    if (!pc.remoteDescription) return;
-    snapshot.docChanges().forEach(async (change) => {
-      if (change.type === "added") {
-        await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-        console.log("REMOTE DESCRIPTION SET");
-      }
-    });
-  });
+  // Variable to track if we started listening to guest ICE candidates
+  let listeningToGuests = false;
 
   onSnapshot(doc(db, "rooms", roomId), async (snapshot) => {
     const data = snapshot.data();
-
     if (!data) return;
 
     if (data.joined) {
@@ -117,8 +95,24 @@ async function createRoom() {
 
     if (data.answer && !pc.currentRemoteDescription) {
       await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+      console.log("ANSWER RECEIVED & SET");
 
-      console.log("ANSWER RECEIVED");
+      // FIX: Start listening to guest candidates ONLY after setting the remote description
+      if (!listeningToGuests) {
+        listeningToGuests = true;
+        onSnapshot(collection(db, "rooms", roomId, "guestCandidates"), (snapshot) => {
+          snapshot.docChanges().forEach(async (change) => {
+            if (change.type === "added") {
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                console.log("GUEST ICE CANDIDATE ADDED");
+              } catch (e) {
+                console.error("Error adding guest candidate:", e);
+              }
+            }
+          });
+        });
+      }
     }
   });
 }

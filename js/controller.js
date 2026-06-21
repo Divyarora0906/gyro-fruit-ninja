@@ -1,5 +1,4 @@
 import { db } from "./firebase.js";
-
 import {
   doc,
   updateDoc,
@@ -10,7 +9,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
 const roomId = new URLSearchParams(location.search).get("room");
-
 const roomRef = doc(db, "rooms", roomId);
 
 const pc = new RTCPeerConnection({
@@ -33,10 +31,8 @@ pc.onicecandidate = async (event) => {
 
 pc.ondatachannel = (event) => {
   dataChannel = event.channel;
-
   dataChannel.onopen = () => {
     console.log("CHANNEL OPEN");
-
     dataChannel.send("HELLO FROM PHONE");
   };
 };
@@ -48,13 +44,26 @@ await updateDoc(roomRef, {
 });
 
 const roomSnap = await getDoc(roomRef);
-
 const roomData = roomSnap.data();
 
+// Set up the offer first
 await pc.setRemoteDescription(new RTCSessionDescription(roomData.offer));
 
-const answer = await pc.createAnswer();
+// FIX: Now that remote description is set, we can safely listen for host candidates
+onSnapshot(collection(db, "rooms", roomId, "hostCandidates"), (snapshot) => {
+  snapshot.docChanges().forEach(async (change) => {
+    if (change.type === "added") {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        console.log("HOST ICE CANDIDATE ADDED");
+      } catch (err) {
+        console.error("Error adding host candidate:", err);
+      }
+    }
+  });
+});
 
+const answer = await pc.createAnswer();
 await pc.setLocalDescription(answer);
 
 await updateDoc(roomRef, {
@@ -62,20 +71,6 @@ await updateDoc(roomRef, {
     type: answer.type,
     sdp: answer.sdp,
   },
-});
-
-onSnapshot(collection(db, "rooms", roomId, "hostCandidates"), (snapshot) => {
-  if (!pc.remoteDescription) return;
-
-  snapshot.docChanges().forEach(async (change) => {
-    if (change.type === "added") {
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  });
 });
 
 document.getElementById("startBtn").addEventListener("click", startSensors);
@@ -89,10 +84,8 @@ async function startSensors() {
       typeof DeviceOrientationEvent.requestPermission === "function"
     ) {
       const permission = await DeviceOrientationEvent.requestPermission();
-
       if (permission !== "granted") {
         status.textContent = "Permission Denied";
-
         return;
       }
     }
@@ -110,25 +103,18 @@ async function startSensors() {
 
     window.addEventListener("deviceorientation", (event) => {
       sensorData.alpha = Math.round(event.alpha || 0);
-
       sensorData.beta = Math.round(event.beta || 0);
-
       sensorData.gamma = Math.round(event.gamma || 0);
 
       document.getElementById("alphaVal").textContent = sensorData.alpha;
-
       document.getElementById("betaVal").textContent = sensorData.beta;
-
       document.getElementById("gammaVal").textContent = sensorData.gamma;
     });
 
     window.addEventListener("devicemotion", (event) => {
       const accel = event.accelerationIncludingGravity;
-
       sensorData.ax = Math.round((accel?.x || 0) * 100) / 100;
-
       sensorData.ay = Math.round((accel?.y || 0) * 100) / 100;
-
       sensorData.az = Math.round((accel?.z || 0) * 100) / 100;
     });
 
@@ -139,7 +125,6 @@ async function startSensors() {
     }, 50);
   } catch (err) {
     console.error(err);
-
     status.textContent = "Sensor Error";
   }
 }
