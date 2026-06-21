@@ -21,7 +21,7 @@ async function createRoom() {
 }
 
 const joinUrl = `${location.origin}/controller.html?room=${roomId}`;
-
+console.log(joinUrl);
 const statusEl = document.getElementById("status");
 
 onSnapshot(doc(db, "rooms", roomId), (snapshot) => {
