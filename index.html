@@ -3,6 +3,25 @@
   <head>
     <title>Host</title>
   </head>
+  <style>
+    #arena {
+      width: 800px;
+      height: 500px;
+      border: 2px solid black;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #cursor {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: red;
+      position: absolute;
+      left: 385px;
+      top: 235px;
+    }
+  </style>
   <body>
     <button id="createRoomBtn">Create Room</button>
     <h1>Host</h1>
@@ -15,6 +34,11 @@
     <p id="status">Waiting for phone...</p>
 
     <div id="qrcode"></div>
+
+    <div id="arena">
+      <div id="cursor"></div>
+    </div>
+
     <h2>Sensors</h2>
 
     <p>

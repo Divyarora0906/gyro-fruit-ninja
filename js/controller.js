@@ -3,42 +3,179 @@ import { db } from "./firebase.js";
 import {
   doc,
   updateDoc,
+  getDoc,
+  collection,
+  addDoc,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-const roomId = new URLSearchParams(location.search).get("room");
+const roomId =
+  new URLSearchParams(location.search)
+    .get("room");
 
-const roomRef = doc(db, "rooms", roomId);
+const roomRef =
+  doc(db, "rooms", roomId);
 
-document.getElementById("room").textContent = `Room: ${roomId}`;
+const pc = new RTCPeerConnection({
+  iceServers: [
+    {
+      urls: "stun:stun.l.google.com:19302",
+    },
+  ],
+});
+
+let dataChannel;
+
+const guestCandidates = collection(
+  db,
+  "rooms",
+  roomId,
+  "guestCandidates"
+);
+
+pc.onicecandidate = async (event) => {
+
+  if (event.candidate) {
+
+    await addDoc(
+      guestCandidates,
+      event.candidate.toJSON()
+    );
+
+  }
+
+};
+
+pc.ondatachannel = (event) => {
+
+  dataChannel =
+    event.channel;
+
+  dataChannel.onopen = () => {
+
+    console.log(
+      "CHANNEL OPEN"
+    );
+
+    dataChannel.send(
+      "HELLO FROM PHONE"
+    );
+
+  };
+
+};
+
+document.getElementById("room").textContent =
+  `Room: ${roomId}`;
 
 await updateDoc(roomRef, {
   joined: true,
 });
 
-document.getElementById("startBtn").addEventListener("click", startSensors);
+const roomSnap =
+  await getDoc(roomRef);
+
+const roomData =
+  roomSnap.data();
+
+await pc.setRemoteDescription(
+  new RTCSessionDescription(
+    roomData.offer
+  )
+);
+
+const answer =
+  await pc.createAnswer();
+
+await pc.setLocalDescription(
+  answer
+);
+
+await updateDoc(
+  roomRef,
+  {
+    answer: {
+      type: answer.type,
+      sdp: answer.sdp,
+    },
+  }
+);
+
+onSnapshot(
+  collection(
+    db,
+    "rooms",
+    roomId,
+    "hostCandidates"
+  ),
+  (snapshot) => {
+
+    snapshot.docChanges()
+      .forEach(async (change) => {
+
+        if (
+          change.type === "added"
+        ) {
+
+          await pc.addIceCandidate(
+            new RTCIceCandidate(
+              change.doc.data()
+            )
+          );
+
+        }
+
+      });
+
+  }
+);
+
+document
+  .getElementById("startBtn")
+  .addEventListener(
+    "click",
+    startSensors
+  );
 
 async function startSensors() {
-  const status = document.getElementById("status");
+
+  const status =
+    document.getElementById(
+      "status"
+    );
 
   try {
-    // iPhone permission
-    if (
-      typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function"
-    ) {
-      const permission = await DeviceOrientationEvent.requestPermission();
 
-      if (permission !== "granted") {
-        status.textContent = "Permission Denied";
+    if (
+      typeof DeviceOrientationEvent !==
+        "undefined" &&
+      typeof DeviceOrientationEvent
+        .requestPermission ===
+        "function"
+    ) {
+
+      const permission =
+        await DeviceOrientationEvent
+          .requestPermission();
+
+      if (
+        permission !==
+        "granted"
+      ) {
+
+        status.textContent =
+          "Permission Denied";
+
         return;
+
       }
+
     }
 
-    status.textContent = "Sensors Active ✅";
+    status.textContent =
+      "Sensors Active ✅";
 
-    let lastSent = 0;
-
-    let sensorData = {
+    const sensorData = {
       alpha: 0,
       beta: 0,
       gamma: 0,
@@ -47,37 +184,81 @@ async function startSensors() {
       az: 0,
     };
 
-    // Gyroscope / Orientation
-    window.addEventListener("deviceorientation", (event) => {
-      sensorData.alpha = Math.round(event.alpha || 0);
+    window.addEventListener(
+      "deviceorientation",
+      (event) => {
 
-      sensorData.beta = Math.round(event.beta || 0);
+        sensorData.alpha =
+          Math.round(
+            event.alpha || 0
+          );
 
-      sensorData.gamma = Math.round(event.gamma || 0);
-    });
+        sensorData.beta =
+          Math.round(
+            event.beta || 0
+          );
 
-    // Accelerometer
-    window.addEventListener("devicemotion", (event) => {
-      const accel = event.accelerationIncludingGravity;
+        sensorData.gamma =
+          Math.round(
+            event.gamma || 0
+          );
 
-      sensorData.ax = Math.round((accel?.x || 0) * 100) / 100;
-
-      sensorData.ay = Math.round((accel?.y || 0) * 100) / 100;
-
-      sensorData.az = Math.round((accel?.z || 0) * 100) / 100;
-    });
-
-    // Send every 100ms
-    setInterval(async () => {
-      try {
-        await updateDoc(roomRef, sensorData);
-      } catch (err) {
-        console.error(err);
       }
-    }, 100);
+    );
+
+    window.addEventListener(
+      "devicemotion",
+      (event) => {
+
+        const accel =
+          event.accelerationIncludingGravity;
+
+        sensorData.ax =
+          Math.round(
+            (accel?.x || 0) *
+              100
+          ) / 100;
+
+        sensorData.ay =
+          Math.round(
+            (accel?.y || 0) *
+              100
+          ) / 100;
+
+        sensorData.az =
+          Math.round(
+            (accel?.z || 0) *
+              100
+          ) / 100;
+
+      }
+    );
+
+    setInterval(() => {
+
+      if (
+        dataChannel &&
+        dataChannel.readyState ===
+          "open"
+      ) {
+
+        dataChannel.send(
+          JSON.stringify(
+            sensorData
+          )
+        );
+
+      }
+
+    }, 50);
+
   } catch (err) {
+
     console.error(err);
 
-    status.textContent = "Sensor Error";
+    status.textContent =
+      "Sensor Error";
+
   }
+
 }
