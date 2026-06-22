@@ -68,7 +68,7 @@ class GameScene extends Phaser.Scene {
   }
   update() {
     // 1. USE PHONE COORDINATES (targetBlade) INSTEAD OF MOUSE POINTER
-    const lerp = 0.3;
+  const lerp = 0.95;
     window.bladeX += (window.targetBladeX - window.bladeX) * lerp;
     window.bladeY += (window.targetBladeY - window.bladeY) * lerp;
 
@@ -196,7 +196,6 @@ class GameScene extends Phaser.Scene {
       this.scheduleNextWave(),
     );
   }
-
   spawnFruit() {
     const x = Phaser.Math.Between(100, 700);
     const type = Phaser.Utils.Array.GetRandom([
@@ -208,13 +207,17 @@ class GameScene extends Phaser.Scene {
     ]);
     const fruit = this.fruits.create(x, 550, type);
 
-    // Increased velocity for more challenge
+    // 1. Massive increase to launch velocity
     fruit.setVelocity(
-      Phaser.Math.Between(-150, 150),
-      Phaser.Math.Between(-1100, -900),
+      Phaser.Math.Between(-250, 250),
+      Phaser.Math.Between(-1400, -1100),
     );
-    fruit.setAngularVelocity(Phaser.Math.Between(-300, 300));
-    fruit.setGravityY(450); // Stronger gravity for faster fall
+
+    // 2. Faster spinning
+    fruit.setAngularVelocity(Phaser.Math.Between(-400, 400));
+
+    // 3. Heavy gravity so they arc and fall sharply
+    fruit.setGravityY(1600);
   }
 }
 

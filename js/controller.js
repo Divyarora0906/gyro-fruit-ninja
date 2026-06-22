@@ -73,41 +73,68 @@ onSnapshot(roomRef, async (snapshot) => {
 
 // --- Sensor Logic ---
 document.getElementById("startBtn").addEventListener("click", startSensors);
-
 async function startSensors() {
   try {
-    if (typeof DeviceMotionEvent.requestPermission === "function") {
+    if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
       const permission = await DeviceMotionEvent.requestPermission();
       if (permission !== "granted") return (status.textContent = "Permission Denied ❌");
     }
 
     status.textContent = "Sensors active! Swing to slice 🔪";
-window.addEventListener("devicemotion", (event) => {
-      const acc = event.accelerationIncludingGravity;
-      if (!acc) return;
 
-      // Calculate how much the phone is currently moving
-      const movementMagnitude = Math.abs(acc.x || 0) + Math.abs(acc.y || 0);
+    // --- NEW PHYSICS VARIABLES ---
+    let vx = 0;
+    let vy = 0;
+    
+    // 🔴 CHANGE THESE TO FLIP THE DIRECTION 🔴
+    // If up/down is backward, change invertY to 1. If left/right is backward, change invertX to -1.
+    const invertX = 1;  
+    const invertY = -1; 
 
-      // Update position logic
-      posX += (acc.x || 0) * 0.5;
-      posY -= (acc.y || 0) * 0.5;
+    window.addEventListener("devicemotion", (event) => {
+      // Prefer pure acceleration (no gravity tilt)
+      let ax = event.acceleration?.x || 0;
+      let ay = event.acceleration?.y || 0;
+
+      // Fallback if hardware doesn't provide pure linear acceleration
+      if (ax === 0 && ay === 0) {
+        ax = event.accelerationIncludingGravity?.x || 0;
+        ay = event.accelerationIncludingGravity?.y || 0;
+      }
+
+// 1. DEADZONE: Lowered to 0.1 so it reacts instantly to tiny twitches
+      if (Math.abs(ax) < 0.1) ax = 0;
+      if (Math.abs(ay) < 0.1) ay = 0;
+
+      // 2. CALCULATE VELOCITY
+      vx += ax * invertX;
+      vy += ay * invertY;
+
+      // 3. FRICTION: Lowered slightly (0.80) so it stops cleanly when you stop your hand
+      vx *= 0.80; 
+      vy *= 0.80; 
+
+      // 4. MOVE POSITION: Massive speed boost! (Changed from 3.0 to 15.0)
+      posX += vx * 15.0; 
+      posY += vy * 15.0;
 
       // Boundary constraints
       posX = Math.max(0, Math.min(800, posX));
       posY = Math.max(0, Math.min(500, posY));
 
-      // Update shared object AND add the isMoving flag
+      // Calculate total movement force for the trail visibility
+      const movementMagnitude = Math.abs(vx) + Math.abs(vy);
+
+      // Update shared object
       motionData.ax = posX;
       motionData.ay = posY;
-      motionData.az = (acc.z || 0) - 9.8;
-      motionData.isMoving = movementMagnitude > 1.5; // True if swinging, False if still
+      motionData.isMoving = movementMagnitude > 2.0; // Hide blade if moving too slow
 
       // Update UI
       document.getElementById("alphaVal").textContent = posX.toFixed(0);
       document.getElementById("betaVal").textContent = posY.toFixed(0);
     });
-    // Send data to laptop
+
     setInterval(() => {
       if (dataChannel?.readyState === "open") {
         dataChannel.send(JSON.stringify(motionData));
