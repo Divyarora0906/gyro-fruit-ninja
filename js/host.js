@@ -20,8 +20,11 @@ document.getElementById("startGameBtn").addEventListener("click", () => {
 // Blade coordinates controlled by physical velocity vectors
 window.bladeX = 400;
 window.bladeY = 250;
+window.targetBladeX = 400;   // FIX: was undefined, causing LERP to break
+window.targetBladeY = 250;   // FIX: was undefined, causing LERP to break
 window.isSlashing = false;
 window.score = 0;
+
 class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
@@ -36,15 +39,15 @@ class GameScene extends Phaser.Scene {
     gfx.fillStyle(outerColor, 1);
     gfx.fillCircle(25, 25, 25);
     gfx.fillStyle(innerColor, 1);
-    gfx.fillCircle(25, 25, 20); // Inner flesh ring look
+    gfx.fillCircle(25, 25, 20);
     gfx.generateTexture(key, 50, 50);
-    gfx.destroy(); // Clean up graphics object from memory
+    gfx.destroy();
   }
 
   create() {
     window.gameScene = this;
 
-    // 1. Generate Dojo Background Plank Texture safely in create()
+    // 1. Dojo Background
     let bgGfx = this.make.graphics({ x: 0, y: 0, add: false });
     bgGfx.fillStyle(0x3e2723, 1);
     bgGfx.fillRect(0, 0, 800, 500);
@@ -55,16 +58,14 @@ class GameScene extends Phaser.Scene {
     bgGfx.generateTexture("dojo_bg", 800, 500);
     bgGfx.destroy();
 
-    // Draw the background image to the screen
     this.add.image(400, 250, "dojo_bg");
 
-    // 2. Generate Fruit Textures safely in create()
+    // 2. Fruit Textures
     this.createFruitTexture("watermelon", 0x4caf50, 0xff5722);
     this.createFruitTexture("apple", 0xd50000, 0xffffff);
     this.createFruitTexture("orange", 0xff9800, 0xffe082);
     this.createFruitTexture("banana", 0xffeb3b, 0xfff59d);
 
-    // Initialize groups and physics configurations
     this.fruits = this.physics.add.group();
     this.gameRunning = false;
     this.trailGraphics = this.add.graphics();
@@ -90,24 +91,22 @@ class GameScene extends Phaser.Scene {
     if (!this.gameRunning) return;
 
     const x = Phaser.Math.Between(150, 650);
-    const y = 540; // Spawns cleanly completely offscreen beneath layout
+    const y = 540;
 
     const fruitTypes = ["watermelon", "apple", "orange", "banana"];
     const chosenType = Phaser.Math.RND.pick(fruitTypes);
 
     const fruit = this.physics.add.sprite(x, y, chosenType);
     fruit.setCircle(23);
-
-    // Parabolic arc mechanics: Go up high, gravity naturally forces them back down
     fruit.setGravityY(400);
     fruit.setVelocityX(Phaser.Math.Between(-100, 100));
-    fruit.setVelocityY(Phaser.Math.Between(-620, -720)); // High upward jump velocity
+    fruit.setVelocityY(Phaser.Math.Between(-620, -720));
 
     this.fruits.add(fruit);
   }
 
   update() {
-    // --- LERP ANTI-JERK INPUT FILTERING ---
+    // LERP smoothing — now works correctly since targetBladeX/Y are initialized
     const lerpFactor = 0.15;
     window.bladeX += (window.targetBladeX - window.bladeX) * lerpFactor;
     window.bladeY += (window.targetBladeY - window.bladeY) * lerpFactor;
@@ -119,7 +118,7 @@ class GameScene extends Phaser.Scene {
       if (this.trailPoints.length > 0) this.trailPoints.shift();
     }
 
-    // Render the beautiful blade trail
+    // Blade trail rendering
     this.trailGraphics.clear();
     if (this.trailPoints.length > 1) {
       for (let i = 1; i < this.trailPoints.length; i++) {
@@ -129,39 +128,34 @@ class GameScene extends Phaser.Scene {
 
         this.trailGraphics.lineStyle(7, 0xe0f7fa, alpha);
         this.trailGraphics.strokeLineShape(
-          new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
+          new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y)
         );
-
         this.trailGraphics.lineStyle(3, 0xffffff, alpha);
         this.trailGraphics.strokeLineShape(
-          new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
+          new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y)
         );
       }
     }
 
-    // Slicing Collision Intersection Checks
+    // Slice detection
     if (this.gameRunning && this.trailPoints.length > 1) {
       const lastPoint = this.trailPoints[this.trailPoints.length - 1];
       const prevPoint = this.trailPoints[this.trailPoints.length - 2];
       const slashLine = new Phaser.Geom.Line(
-        prevPoint.x,
-        prevPoint.y,
-        lastPoint.x,
-        lastPoint.y,
+        prevPoint.x, prevPoint.y,
+        lastPoint.x, lastPoint.y
       );
 
       this.fruits.getChildren().forEach((fruit) => {
         if (fruit && fruit.active) {
-          if (
-            Phaser.Geom.Intersects.LineToRectangle(slashLine, fruit.getBounds())
-          ) {
+          if (Phaser.Geom.Intersects.LineToRectangle(slashLine, fruit.getBounds())) {
             this.sliceFruit(fruit);
           }
         }
       });
     }
 
-    // Safely remove fallen dead items once they descend completely below screen horizon
+    // Remove fallen fruits
     this.fruits.getChildren().forEach((fruit) => {
       if (fruit.y > 560 && fruit.body.velocity.y > 0) {
         fruit.destroy();
@@ -178,7 +172,6 @@ class GameScene extends Phaser.Scene {
     window.score += 10;
     scoreTextEl.textContent = window.score;
 
-    // Explode juicy splashes based on custom fruit styles
     let splashColor = 0xff5722;
     if (key === "watermelon") splashColor = 0xff3d00;
     if (key === "apple") splashColor = 0xffebee;
@@ -186,22 +179,18 @@ class GameScene extends Phaser.Scene {
     if (key === "banana") splashColor = 0xffeb3b;
 
     for (let i = 0; i < 12; i++) {
-      const part = this.add.circle(
-        fx,
-        fy,
-        Phaser.Math.Between(3, 6),
-        splashColor,
-      );
+      const part = this.add.circle(fx, fy, Phaser.Math.Between(3, 6), splashColor);
       this.physics.add.existing(part);
       part.body.setVelocity(
         Phaser.Math.Between(-300, 300),
-        Phaser.Math.Between(-300, 300),
+        Phaser.Math.Between(-300, 300)
       );
       part.body.setGravityY(200);
       this.time.delayedCall(400, () => part.destroy());
     }
   }
 }
+
 const config = {
   type: Phaser.AUTO,
   width: 800,
@@ -218,8 +207,27 @@ async function createRoom() {
     document.getElementById("roomId").textContent = roomId;
     statusEl.textContent = "Setting up WebRTC... ⏳";
 
+    // FIX: Added TURN servers so WebRTC works through hotspot NAT
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+      ],
     });
 
     pc.oniceconnectionstatechange = () => {
@@ -227,8 +235,11 @@ async function createRoom() {
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") {
-        statusEl.textContent = "Phone linked!";
+        statusEl.textContent = "Phone linked! ✅";
         startOverlay.style.display = "flex";
+      }
+      if (pc.connectionState === "failed") {
+        statusEl.textContent = "Connection failed ❌ — Try again";
       }
     };
 
@@ -241,19 +252,18 @@ async function createRoom() {
     const channel = pc.createDataChannel("controller");
     channel.onopen = () => {
       window.isSlashing = true;
+      statusEl.textContent = "Phone linked! ✅";
     };
 
     channel.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
 
-        // Convert the phone's physical linear translation forces into screen pointer tracking coordinates
-        // Using high amplification multipliers (* 45) turns fast spatial changes into huge knife slashes
-        window.bladeX = 400 - data.ax * 45;
-        window.bladeY = 250 + data.ay * 45;
-
-        window.bladeX = Math.max(0, Math.min(800, window.bladeX));
-        window.bladeY = Math.max(0, Math.min(500, window.bladeY));
+        // FIX: Set targetBladeX/Y (not bladeX/Y directly) so LERP smoothing works
+        window.targetBladeX = 400 - data.ax * 45;
+        window.targetBladeY = 250 + data.ay * 45;
+        window.targetBladeX = Math.max(0, Math.min(800, window.targetBladeX));
+        window.targetBladeY = Math.max(0, Math.min(500, window.targetBladeY));
       } catch (e) {}
     };
 
@@ -267,7 +277,14 @@ async function createRoom() {
       offer: { type: offer.type, sdp: offer.sdp },
     });
 
-    const joinUrl = `${location.origin}${location.pathname.replace("index.html", "")}controller.html?room=${roomId}`;
+    // FIX: Always use Vercel URL in QR so phone can actually open it
+    // When running locally, localhost is unreachable from the phone
+    const origin =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1"
+        ? "https://gyro-fruit-ninja.vercel.app"
+        : location.origin;
+    const joinUrl = `${origin}/controller.html?room=${roomId}`;
+
     document.getElementById("qrcode").innerHTML = "";
     new QRCode(document.getElementById("qrcode"), joinUrl);
     statusEl.textContent = "Scan QR to Pair... 📱";
@@ -286,12 +303,12 @@ async function createRoom() {
                 if (change.type === "added") {
                   try {
                     await pc.addIceCandidate(
-                      new RTCIceCandidate(change.doc.data()),
+                      new RTCIceCandidate(change.doc.data())
                     );
                   } catch (e) {}
                 }
               });
-            },
+            }
           );
         }
       }
