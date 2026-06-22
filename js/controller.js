@@ -39,36 +39,30 @@ pc.onconnectionstatechange = () => {
 pc.ondatachannel = (event) => {
   dataChannel = event.channel;
   dataChannel.onopen = () => (status.textContent = "Connected to Laptop! ✅");
-
- dataChannel.onmessage = (msgEvent) => {
+dataChannel.onmessage = (msgEvent) => {
     try {
       const data = JSON.parse(msgEvent.data);
       
       if (data.type === "FRUIT_DESTROYED") {
-        // 1. Check if the network signal actually arrived
-        status.textContent = "Signal Received! 🟢 Attempting buzz...";
+        status.textContent = "💥 SLICE DETECTED! Buzzing... 💥";
 
-        if (!navigator.vibrate) {
-          // 2. Check browser support (e.g., iPhone/Safari)
-          status.textContent = "Blocked: Browser doesn't support navigator.vibrate ❌";
-          return;
-        }
-
-        // 3. Try to execute the hardware pulse
-        const didVibrate = navigator.vibrate(40);
-        
-        if (!didVibrate) {
-          // 4. Check for user-activation restrictions
-          status.textContent = "Blocked: Needs direct screen tap first! 🛑";
+        if (navigator.vibrate) {
+          // Bamped up to a solid 150ms pulse so the motor has time to spin up
+          navigator.vibrate(150); 
+          
+          // ALTERNATIVE: If you want a sharp double-tap feel, uncomment the line below:
+          // navigator.vibrate([100, 50, 100]); // Buzz 100ms, Pause 50ms, Buzz 100ms
         } else {
-          // Success fallback text
-          setTimeout(() => {
-            status.textContent = "Sensors active! Swing to slice 🔪";
-          }, 500);
+          status.textContent = "Not supported on this device ❌";
         }
+
+        // Keep the text on screen for 1.5 seconds instead of disappearing instantly
+        setTimeout(() => {
+          status.textContent = "Sensors active! Swing to slice 🔪";
+        }, 1500);
       }
     } catch (err) {
-      status.textContent = `Parse Error: ${err.message}`;
+      console.error(err);
     }
   };
 };
