@@ -85,7 +85,9 @@ class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
   }
-
+  preload() {
+    this.load.audio("sliceSound", "../slice.mp3");
+  }
   create() {
     window.gameScene = this;
     const bg = this.make.graphics({ x: 0, y: 0, add: false });
@@ -188,6 +190,8 @@ class GameScene extends Phaser.Scene {
   sliceFruit(fruit) {
     const key = fruit.texture.key;
     const { x, y } = fruit;
+
+    this.sound.play("sliceSound", { volume: 0.5 });
     if (channel && channel.readyState === "open") {
       channel.send(JSON.stringify({ type: "FRUIT_DESTROYED" }));
     }
