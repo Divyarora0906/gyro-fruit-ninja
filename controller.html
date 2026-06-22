@@ -5,18 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Blade Controller</title>
     <style>
-      /* --- Design Tokens (Minimalist Orange) --- */
       :root {
-        --bg-main: #0a0a0c;         /* Matte deep charcoal */
-        --card-bg: #121215;         /* Container background */
-        --border-subtle: #1f1f24;   /* Razor thin divider grid */
-        --brand-orange: #ff5500;    /* Premium crisp racing orange */
+        --bg-main: #0a0a0c;         
+        --card-bg: #121215;         
+        --border-subtle: #1f1f24;   
+        --brand-orange: #ff5500;    
         --orange-dim: rgba(255, 85, 0, 0.1);
         --text-main: #ffffff;
         --text-muted: #6b7280;
       }
-
-      /* --- Reset & Mobile Optimizations --- */
       * {
         box-sizing: border-box;
         margin: 0;
@@ -25,7 +22,6 @@
         user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
-
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
         background-color: var(--bg-main);
@@ -37,8 +33,6 @@
         padding: 40px 24px;
         overflow: hidden;
       }
-
-      /* --- Top Layout Header --- */
       header {
         display: flex;
         justify-content: space-between;
@@ -68,7 +62,6 @@
         font-weight: 700;
       }
 
-      /* --- Core Interaction Area --- */
       .interaction-zone {
         flex: 1;
         display: flex;
@@ -108,7 +101,6 @@
         text-align: center;
       }
 
-      /* --- Telemetry Stream Matrix --- */
       .telemetry-grid {
         width: 100%;
         display: grid;
@@ -148,19 +140,16 @@
   </head>
   <body>
 
-    <!-- Header Block -->
     <header>
       <h1>Controller</h1>
       <div class="room-container">ID: <span id="room">------</span></div>
     </header>
 
-    <!-- Main Dynamic Interaction Deck -->
     <div class="interaction-zone">
       <button id="startBtn">Sync</button>
       <div id="status">Ready to pair</div>
     </div>
 
-    <!-- Telemetry Readouts -->
     <div class="telemetry-grid">
       <div class="metric-node">
         <div class="metric-label">Alpha</div>

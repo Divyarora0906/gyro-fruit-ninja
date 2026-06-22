@@ -47,16 +47,12 @@ dataChannel.onmessage = (msgEvent) => {
         status.textContent = "💥 SLICE DETECTED! Buzzing... 💥";
 
         if (navigator.vibrate) {
-          // Bamped up to a solid 150ms pulse so the motor has time to spin up
           navigator.vibrate(150); 
           
-          // ALTERNATIVE: If you want a sharp double-tap feel, uncomment the line below:
-          // navigator.vibrate([100, 50, 100]); // Buzz 100ms, Pause 50ms, Buzz 100ms
         } else {
           status.textContent = "Not supported on this device ❌";
         }
 
-        // Keep the text on screen for 1.5 seconds instead of disappearing instantly
         setTimeout(() => {
           status.textContent = "Sensors active! Swing to slice 🔪";
         }, 1500);

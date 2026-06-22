@@ -8,7 +8,6 @@ import {
   addDoc,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-// Global DOM Nodes Selector References
 const statusEl = document.getElementById("status");
 const scoreTextEl = document.getElementById("scoreText");
 const startOverlay = document.getElementById("startOverlay");
@@ -23,21 +22,17 @@ const connDot = document.getElementById("connDot");
 const connLabel = document.getElementById("connLabel");
 const gameContainer = document.getElementById("game-container");
 let channel;
-// Event Action Mapping Listeners
 createRoomBtn.addEventListener("click", createRoom);
 
 restartGameBtn.addEventListener("click", () => {
   restartGameBtn.style.display = "none";
 
-  // Keep Fullscreen intact when re-entering game flow loops
   if (!document.fullscreenElement && gameContainer.requestFullscreen) {
     gameContainer.requestFullscreen().catch(() => {});
   }
-
   if (window.gameScene) window.gameScene.restartGame();
 });
 
-// Blade Vector Trackers Engine Settings
 window.bladeX = 400;
 window.bladeY = 250;
 window.targetBladeX = 400;
@@ -45,9 +40,8 @@ window.targetBladeY = 250;
 window.isSlashing = false;
 window.score = 0;
 
-// Helper Engine to modify Connection Health Status Indicator UI
 export function updateConnectionState(state) {
-  connDot.className = "dot"; // reset
+  connDot.className = "dot"; 
   if (state === "connected") {
     connDot.classList.add("healthy");
     connLabel.textContent = "CONNECTED";
@@ -62,16 +56,14 @@ export function updateConnectionState(state) {
   }
 }
 
-// 1. Add this near the top with your other DOM selectors
 const fullscreenBtn = document.getElementById("fullscreenBtn");
 
-// 2. Add this event listener to handle the manual toggle gesture
 fullscreenBtn.addEventListener("click", () => {
   if (!document.fullscreenElement) {
     gameContainer
       .requestFullscreen()
       .then(() => {
-        fullscreenBtn.style.color = "var(--neon-orange)"; // Optional highlight color when active
+        fullscreenBtn.style.color = "var(--neon-orange)"; 
       })
       .catch((err) => console.error("Fullscreen error:", err));
   } else {
@@ -86,7 +78,7 @@ class GameScene extends Phaser.Scene {
     super("GameScene");
   }
   preload() {
-    this.load.audio("sliceSound", "../slice.mp3");
+    this.load.audio("sliceSound", "../assets/slice.mp3");
   }
   create() {
     window.gameScene = this;
@@ -101,7 +93,6 @@ class GameScene extends Phaser.Scene {
     bg.destroy();
     this.add.image(400, 250, "dojo_bg");
 
-    // Fruits Setup
     this.createFruitTexture("watermelon", 0x43a047, 0xff5252);
     this.createFruitTexture("apple", 0xd50000, 0xffffff);
     this.createFruitTexture("orange", 0xff9800, 0xffcc80);
@@ -208,11 +199,9 @@ class GameScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
 
-      // Trigger Game Over Modal Variant state values
-      modalTitle.textContent = "DOJO OVERTHROWN";
+      modalTitle.textContent = "Game Over";
       modalDesc.textContent = `Your blade was broken by a bomb explosion! Final score tracking evaluated: ${window.score} points.`;
 
-      // Hide data-sync setup panels, reveal retry components
       qrWrapper.style.display = "none";
       createRoomBtn.style.display = "none";
       restartGameBtn.style.display = "block";
@@ -296,7 +285,6 @@ class GameScene extends Phaser.Scene {
   }
 }
 
-// Config Instantiation Engine
 const config = {
   type: Phaser.AUTO,
   width: 800,
@@ -310,7 +298,6 @@ const config = {
   scene: GameScene,
 };
 
-// Initializing exactly once to safeguard running memory instances
 new Phaser.Game(config);
 
 async function createRoom() {
@@ -319,7 +306,6 @@ async function createRoom() {
     roomIdText.textContent = roomId;
     roomIdDisplay.textContent = roomId;
 
-    // Morph modal elements into connection tracking state layout
     createRoomBtn.style.display = "none";
     qrWrapper.style.display = "flex";
     modalTitle.textContent = "Awaiting Sync Handler";
@@ -423,12 +409,10 @@ async function createRoom() {
     });
     statusEl.textContent = "Scan QR to Pair... 📱";
 
-    // 👇 REPLACE THE BROKEN SNAPSHOT BLOCK WITH THIS 👇
     let listeningToGuests = false;
     onSnapshot(doc(db, "rooms", roomId), async (snapshot) => {
       const data = snapshot.data();
       if (data?.answer && !pc.currentRemoteDescription) {
-        // This line fixes the ReferenceError completely:
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
 
         if (!listeningToGuests) {
@@ -458,22 +442,18 @@ async function createRoom() {
   }
 }
 
-// Unified Execution Sequence when Handshake is Verified
 function handleSuccessfulConnection() {
   statusEl.textContent = "Phone linked! ✅";
   updateConnectionState("connected");
 
-  // Cleanly pop out modal overlay immediately
   startOverlay.style.display = "none";
 
-  // Request native fullscreen presentation space layout automatically
   if (!document.fullscreenElement && gameContainer.requestFullscreen) {
     gameContainer
       .requestFullscreen()
       .catch((err) => console.log("Fullscreen restriction:", err));
   }
 
-  // Initialize scene loop routines
   if (window.gameScene && !window.gameScene.gameRunning) {
     window.gameScene.startGame();
   }
