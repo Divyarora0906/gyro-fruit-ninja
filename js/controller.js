@@ -40,17 +40,35 @@ pc.ondatachannel = (event) => {
   dataChannel = event.channel;
   dataChannel.onopen = () => (status.textContent = "Connected to Laptop! ✅");
 
-  // 👇 ADD THIS TO LISTEN FOR THE FRUIT POP SIGNALS FROM THE LAPTOP 👇
-  dataChannel.onmessage = (msgEvent) => {
+ dataChannel.onmessage = (msgEvent) => {
     try {
       const data = JSON.parse(msgEvent.data);
+      
       if (data.type === "FRUIT_DESTROYED") {
-        if (navigator.vibrate) {
-          navigator.vibrate(40); // Crisp 40ms physical pulse
+        // 1. Check if the network signal actually arrived
+        status.textContent = "Signal Received! 🟢 Attempting buzz...";
+
+        if (!navigator.vibrate) {
+          // 2. Check browser support (e.g., iPhone/Safari)
+          status.textContent = "Blocked: Browser doesn't support navigator.vibrate ❌";
+          return;
+        }
+
+        // 3. Try to execute the hardware pulse
+        const didVibrate = navigator.vibrate(40);
+        
+        if (!didVibrate) {
+          // 4. Check for user-activation restrictions
+          status.textContent = "Blocked: Needs direct screen tap first! 🛑";
+        } else {
+          // Success fallback text
+          setTimeout(() => {
+            status.textContent = "Sensors active! Swing to slice 🔪";
+          }, 500);
         }
       }
     } catch (err) {
-      console.error("Failed to parse host data channel message:", err);
+      status.textContent = `Parse Error: ${err.message}`;
     }
   };
 };
