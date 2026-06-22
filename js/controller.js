@@ -139,6 +139,7 @@ async function startSensors() {
 
       motionData.isMoving = motionData.power > 8;
     });
+    
     setInterval(() => {
       if (dataChannel?.readyState === "open") {
         dataChannel.send(JSON.stringify(motionData));

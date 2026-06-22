@@ -16,7 +16,19 @@ document.getElementById("startGameBtn").addEventListener("click", () => {
   startOverlay.style.display = "none";
   if (window.gameScene) window.gameScene.startGame();
 });
+const restartGameBtn = document.getElementById("restartGameBtn");
 
+document.getElementById("createRoomBtn").addEventListener("click", createRoom);
+document.getElementById("startGameBtn").addEventListener("click", () => {
+  startOverlay.style.display = "none";
+  if (window.gameScene) window.gameScene.startGame();
+});
+
+// ADD THIS NEW LISTENER HERE
+restartGameBtn.addEventListener("click", () => {
+  restartGameBtn.style.display = "none";
+  if (window.gameScene) window.gameScene.restartGame();
+});
 // Blade coordinates controlled by physical velocity vectors
 window.bladeX = 400;
 window.bladeY = 250;
@@ -149,16 +161,20 @@ class GameScene extends Phaser.Scene {
     const { x, y } = fruit;
     fruit.setActive(false).setVisible(false);
     fruit.destroy();
-
     if (key === "bomb") {
       this.gameRunning = false;
-      this.add
+
+      // Save a reference to the text as a class property (this.gameOverText)
+      this.gameOverText = this.add
         .text(400, 250, "GAME OVER", {
           fontSize: "64px",
           color: "#ff0000",
           fontStyle: "bold",
         })
         .setOrigin(0.5);
+
+      // Show the HTML restart button
+      document.getElementById("restartGameBtn").style.display = "block";
       return;
     }
 
@@ -184,6 +200,23 @@ class GameScene extends Phaser.Scene {
     window.score = 0;
     scoreTextEl.textContent = "0";
     this.scheduleNextWave();
+  }
+  restartGame() {
+    // 1. Wipe out any fruits or bombs still floating on screen
+    this.fruits.clear(true, true);
+
+    // 2. Wipe the previous trail arrays clean
+    this.trailPoints = [];
+    this.trailGraphics.clear();
+
+    // 3. Delete the "GAME OVER" text layout from the screen
+    if (this.gameOverText) {
+      this.gameOverText.destroy();
+      this.gameOverText = null;
+    }
+
+    // 4. Safely kick off the game loops again
+    this.startGame();
   }
 
   scheduleNextWave() {
