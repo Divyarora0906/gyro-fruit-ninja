@@ -1,20 +1,180 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>Controller</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Blade Controller</title>
+    <style>
+      /* --- Design Tokens (Minimalist Orange) --- */
+      :root {
+        --bg-main: #0a0a0c;         /* Matte deep charcoal */
+        --card-bg: #121215;         /* Container background */
+        --border-subtle: #1f1f24;   /* Razor thin divider grid */
+        --brand-orange: #ff5500;    /* Premium crisp racing orange */
+        --orange-dim: rgba(255, 85, 0, 0.1);
+        --text-main: #ffffff;
+        --text-muted: #6b7280;
+      }
+
+      /* --- Reset & Mobile Optimizations --- */
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 40px 24px;
+        overflow: hidden;
+      }
+
+      /* --- Top Layout Header --- */
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        width: 100%;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-bottom: 16px;
+      }
+
+      h1 {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--text-main);
+      }
+
+      .room-container {
+        font-size: 0.85rem;
+        font-family: monospace;
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+      }
+
+      #room {
+        color: var(--brand-orange);
+        font-weight: 700;
+      }
+
+      /* --- Core Interaction Area --- */
+      .interaction-zone {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+      }
+
+      #startBtn {
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        border: 1px solid var(--brand-orange);
+        background: var(--orange-dim);
+        color: var(--brand-orange);
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      #startBtn:active {
+        transform: scale(0.95);
+        background: var(--brand-orange);
+        color: var(--bg-main);
+      }
+
+      #status {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--text-muted);
+        text-align: center;
+      }
+
+      /* --- Telemetry Stream Matrix --- */
+      .telemetry-grid {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1px solid var(--border-subtle);
+        background: var(--card-bg);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .metric-node {
+        padding: 16px 12px;
+        text-align: center;
+        border-right: 1px solid var(--border-subtle);
+      }
+
+      .metric-node:last-child {
+        border-right: none;
+      }
+
+      .metric-label {
+        font-size: 0.6rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+
+      .metric-value {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 1.1rem;
+        font-weight: 400;
+        color: var(--text-main);
+      }
+    </style>
   </head>
   <body>
-    <h1>Controller</h1>
 
-    <p id="room"></p>
+    <!-- Header Block -->
+    <header>
+      <h1>Controller</h1>
+      <div class="room-container">ID: <span id="room">------</span></div>
+    </header>
 
-    <button id="startBtn">Enable Sensors</button>
+    <!-- Main Dynamic Interaction Deck -->
+    <div class="interaction-zone">
+      <button id="startBtn">Sync</button>
+      <div id="status">Ready to pair</div>
+    </div>
 
-    <p id="status">Waiting...</p>
-
-    <p>Alpha: <span id="alphaVal">0</span></p>
-    <p>Beta: <span id="betaVal">0</span></p>
-    <p>Gamma: <span id="gammaVal">0</span></p>
+    <!-- Telemetry Readouts -->
+    <div class="telemetry-grid">
+      <div class="metric-node">
+        <div class="metric-label">Alpha</div>
+        <div id="alphaVal" class="metric-value">0</div>
+      </div>
+      <div class="metric-node">
+        <div class="metric-label">Beta</div>
+        <div id="betaVal" class="metric-value">0</div>
+      </div>
+      <div class="metric-node">
+        <div class="metric-label">Gamma</div>
+        <div id="gammaVal" class="metric-value">0</div>
+      </div>
+    </div>
 
     <script type="module" src="./js/controller.js"></script>
   </body>

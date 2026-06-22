@@ -8,29 +8,79 @@ import {
   addDoc,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
+// Global DOM Nodes Selector References
 const statusEl = document.getElementById("status");
 const scoreTextEl = document.getElementById("scoreText");
 const startOverlay = document.getElementById("startOverlay");
 const restartGameBtn = document.getElementById("restartGameBtn");
+const createRoomBtn = document.getElementById("createRoomBtn");
+const qrWrapper = document.getElementById("qrWrapper");
+const modalTitle = document.getElementById("modalTitle");
+const modalDesc = document.getElementById("modalDesc");
+const roomIdText = document.getElementById("roomId");
+const roomIdDisplay = document.getElementById("roomIdDisplay");
+const connDot = document.getElementById("connDot");
+const connLabel = document.getElementById("connLabel");
+const gameContainer = document.getElementById("game-container");
+let channel;
+// Event Action Mapping Listeners
+createRoomBtn.addEventListener("click", createRoom);
 
-document.getElementById("createRoomBtn").addEventListener("click", createRoom);
-document.getElementById("startGameBtn").addEventListener("click", () => {
-  startOverlay.style.display = "none";
-  if (window.gameScene) window.gameScene.startGame();
-});
-
-// ADD THIS NEW LISTENER HERE
 restartGameBtn.addEventListener("click", () => {
   restartGameBtn.style.display = "none";
+
+  // Keep Fullscreen intact when re-entering game flow loops
+  if (!document.fullscreenElement && gameContainer.requestFullscreen) {
+    gameContainer.requestFullscreen().catch(() => {});
+  }
+
   if (window.gameScene) window.gameScene.restartGame();
 });
-// Blade coordinates controlled by physical velocity vectors
+
+// Blade Vector Trackers Engine Settings
 window.bladeX = 400;
 window.bladeY = 250;
-window.targetBladeX = 400; // FIX: was undefined, causing LERP to break
-window.targetBladeY = 250; // FIX: was undefined, causing LERP to break
+window.targetBladeX = 400;
+window.targetBladeY = 250;
 window.isSlashing = false;
 window.score = 0;
+
+// Helper Engine to modify Connection Health Status Indicator UI
+export function updateConnectionState(state) {
+  connDot.className = "dot"; // reset
+  if (state === "connected") {
+    connDot.classList.add("healthy");
+    connLabel.textContent = "CONNECTED";
+    connLabel.style.color = "var(--neon-green)";
+  } else if (state === "connecting") {
+    connDot.classList.add("warning");
+    connLabel.textContent = "CONNECTING";
+    connLabel.style.color = "var(--neon-orange)";
+  } else {
+    connLabel.textContent = "DISCONNECTED";
+    connLabel.style.color = "var(--neon-red)";
+  }
+}
+
+// 1. Add this near the top with your other DOM selectors
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+
+// 2. Add this event listener to handle the manual toggle gesture
+fullscreenBtn.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    gameContainer
+      .requestFullscreen()
+      .then(() => {
+        fullscreenBtn.style.color = "var(--neon-orange)"; // Optional highlight color when active
+      })
+      .catch((err) => console.error("Fullscreen error:", err));
+  } else {
+    document.exitFullscreen().then(() => {
+      fullscreenBtn.style.color = "";
+    });
+  }
+});
+
 class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
@@ -38,8 +88,6 @@ class GameScene extends Phaser.Scene {
 
   create() {
     window.gameScene = this;
-
-    // Background
     const bg = this.make.graphics({ x: 0, y: 0, add: false });
     bg.fillStyle(0x3e2723, 1);
     bg.fillRect(0, 0, 800, 500);
@@ -73,8 +121,8 @@ class GameScene extends Phaser.Scene {
     gfx.generateTexture(key, 60, 60);
     gfx.destroy();
   }
+
   update() {
-    // 1. USE PHONE COORDINATES (targetBlade) INSTEAD OF MOUSE POINTER
     const lerp = 0.12;
     window.bladeX += (window.targetBladeX - window.bladeX) * lerp;
     window.bladeY += (window.targetBladeY - window.bladeY) * lerp;
@@ -85,10 +133,8 @@ class GameScene extends Phaser.Scene {
     } else {
       this.trailPoints = [];
     }
-
     this.drawTrail();
 
-    // 3. Collision Detection (as before)
     if (this.gameRunning && this.trailPoints.length > 2) {
       for (let i = 1; i < this.trailPoints.length; i++) {
         const p1 = this.trailPoints[i - 1];
@@ -112,56 +158,44 @@ class GameScene extends Phaser.Scene {
       }
     }
   }
+
   drawTrail() {
     this.trailGraphics.clear();
-
-    // Don't draw if we don't have enough points
     if (this.trailPoints.length < 2) return;
 
     for (let i = 1; i < this.trailPoints.length; i++) {
       const p1 = this.trailPoints[i - 1];
       const p2 = this.trailPoints[i];
 
-      // Calculate progress from 0 (tail) to 1 (head)
       const progress = i / this.trailPoints.length;
-
-      // Taper the thickness: head is thick (14px), tail is thin
       const t = Math.sin(progress * Math.PI);
-
       const coreThickness = 2 + t * 5;
       const glowThickness = 4 + t * 8;
+      const alpha = Math.sin(progress * Math.PI);
 
-      // Fade out the tail
-     const alpha = Math.sin(progress * Math.PI);
-
-      // 1. DRAW OUTER GLOW (Cyan/Blue)
       this.trailGraphics.lineStyle(glowThickness, 0xffffff, alpha * 0.2);
       this.trailGraphics.strokeLineShape(
         new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
       );
-      // // Add a circle at the joint to round off jagged edges
-      // this.trailGraphics.fillStyle(0x00e5ff, alpha * 0.5);
-      // this.trailGraphics.fillCircle(p2.x, p2.y, glowThickness / 2);
 
-      // 2. DRAW INNER CORE (White)
       this.trailGraphics.lineStyle(coreThickness, 0xffffff, alpha);
       this.trailGraphics.strokeLineShape(
         new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
       );
-      // Round off the inner core
-      // this.trailGraphics.fillStyle(0xffffff, alpha);
-      // this.trailGraphics.fillCircle(p2.x, p2.y, coreThickness / 2);
     }
   }
+
   sliceFruit(fruit) {
     const key = fruit.texture.key;
     const { x, y } = fruit;
+    if (channel && channel.readyState === "open") {
+      channel.send(JSON.stringify({ type: "FRUIT_DESTROYED" }));
+    }
     fruit.setActive(false).setVisible(false);
     fruit.destroy();
+
     if (key === "bomb") {
       this.gameRunning = false;
-
-      // Save a reference to the text as a class property (this.gameOverText)
       this.gameOverText = this.add
         .text(400, 250, "GAME OVER", {
           fontSize: "64px",
@@ -170,20 +204,22 @@ class GameScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
 
-      // Show the HTML restart button
+      // Trigger Game Over Modal Variant state values
+      modalTitle.textContent = "DOJO OVERTHROWN";
+      modalDesc.textContent = `Your blade was broken by a bomb explosion! Final score tracking evaluated: ${window.score} points.`;
+
+      // Hide data-sync setup panels, reveal retry components
+      qrWrapper.style.display = "none";
+      createRoomBtn.style.display = "none";
+      restartGameBtn.style.display = "block";
+      statusEl.style.display = "none";
+
       startOverlay.style.display = "flex";
-
-      document.getElementById("restartGameBtn").style.display = "block";
-
-      document.getElementById("startGameBtn").style.display = "none";
       return;
     }
 
-    // Update Score
     window.score += 10;
     scoreTextEl.textContent = window.score;
-
-    // Visual Splash
     const color = key === "watermelon" ? 0xff5252 : 0xff9800;
     for (let i = 0; i < 12; i++) {
       const splash = this.add.circle(x, y, 4, color);
@@ -202,42 +238,35 @@ class GameScene extends Phaser.Scene {
     scoreTextEl.textContent = "0";
     this.scheduleNextWave();
   }
+
   restartGame() {
     this.gameRunning = false;
-    // 1. Wipe out any fruits or bombs still floating on screen
     this.fruits.clear(true, true);
     this.time.removeAllEvents();
-    // 2. Wipe the previous trail arrays clean
     this.trailPoints = [];
     this.trailGraphics.clear();
-
-    // 3. Delete the "GAME OVER" text layout from the screen
     if (this.gameOverText) {
       this.gameOverText.destroy();
       this.gameOverText = null;
     }
     startOverlay.style.display = "none";
 
-    document.getElementById("startGameBtn").style.display = "block";
-
-    document.getElementById("restartGameBtn").style.display = "none";
     window.bladeX = 400;
     window.bladeY = 250;
     window.targetBladeX = 400;
     window.targetBladeY = 250;
     window.isSlashing = false;
-    // 4. Safely kick off the game loops again
     this.startGame();
   }
 
   scheduleNextWave() {
     if (!this.gameRunning) return;
     this.spawnFruit();
-    // Faster wave interval
     this.time.delayedCall(Phaser.Math.Between(500, 1000), () =>
       this.scheduleNextWave(),
     );
   }
+
   spawnFruit() {
     const x = Phaser.Math.Between(100, 700);
     const type = Phaser.Utils.Array.GetRandom([
@@ -251,40 +280,51 @@ class GameScene extends Phaser.Scene {
       "banana",
       "banana",
       "bomb",
+      "bomb",
     ]);
     const fruit = this.fruits.create(x, 550, type);
-
-    // 1. Massive increase to launch velocity
     fruit.setVelocity(
       Phaser.Math.Between(-250, 250),
       Phaser.Math.Between(-1400, -1100),
     );
-
-    // 2. Faster spinning
     fruit.setAngularVelocity(Phaser.Math.Between(-400, 400));
-
-    // 3. Heavy gravity so they arc and fall sharply
     fruit.setGravityY(1600);
   }
 }
 
+// Config Instantiation Engine
 const config = {
   type: Phaser.AUTO,
   width: 800,
   height: 500,
   parent: "arena",
   physics: { default: "arcade", arcade: { debug: false } },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
   scene: GameScene,
 };
+
+// Initializing exactly once to safeguard running memory instances
 new Phaser.Game(config);
 
 async function createRoom() {
   try {
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    document.getElementById("roomId").textContent = roomId;
-    statusEl.textContent = "Setting up WebRTC... ⏳";
+    roomIdText.textContent = roomId;
+    roomIdDisplay.textContent = roomId;
 
-    // FIX: Added TURN servers so WebRTC works through hotspot NAT
+    // Morph modal elements into connection tracking state layout
+    createRoomBtn.style.display = "none";
+    qrWrapper.style.display = "flex";
+    modalTitle.textContent = "Awaiting Sync Handler";
+    modalDesc.textContent =
+      "Scan this signature link payload mapping on your hardware device to sync telemetry channels.";
+
+    statusEl.textContent = "Setting up WebRTC... ⏳";
+    updateConnectionState("connecting");
+
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
@@ -299,24 +339,31 @@ async function createRoom() {
           username: "openrelayproject",
           credential: "openrelayproject",
         },
-        {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
       ],
     });
 
     pc.oniceconnectionstatechange = () => {
-      statusEl.textContent = `ICE: ${pc.iceConnectionState}`;
-    };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") {
-        statusEl.textContent = "Phone linked! ✅";
+      if (
+        pc.iceConnectionState === "disconnected" ||
+        pc.iceConnectionState === "failed"
+      ) {
+        updateConnectionState("disconnected");
+        statusEl.textContent = "Signal Disconnected ❌";
         startOverlay.style.display = "flex";
       }
-      if (pc.connectionState === "failed") {
-        statusEl.textContent = "Connection failed ❌ — Try again";
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") {
+        handleSuccessfulConnection();
+      }
+      if (
+        pc.connectionState === "failed" ||
+        pc.connectionState === "disconnected"
+      ) {
+        updateConnectionState("disconnected");
+        statusEl.textContent = "Link Failed ❌";
+        startOverlay.style.display = "flex";
       }
     };
 
@@ -326,26 +373,21 @@ async function createRoom() {
         await addDoc(hostCandidates, event.candidate.toJSON());
     };
 
-    const channel = pc.createDataChannel("controller");
+    channel = pc.createDataChannel("controller");
     channel.onopen = () => {
       window.isSlashing = true;
-      statusEl.textContent = "Phone linked! ✅";
+      handleSuccessfulConnection();
     };
+
     channel.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-
         const centerX = 400;
         const centerY = 250;
-
         window.targetBladeX = centerX + (data.swingX || 0) * 25;
-
         window.targetBladeY = centerY + (data.swingY || 0) * 25;
-
         window.targetBladeX = Phaser.Math.Clamp(window.targetBladeX, 0, 800);
-
         window.targetBladeY = Phaser.Math.Clamp(window.targetBladeY, 0, 500);
-
         window.isSlashing = (data.power || 0) > 8;
       } catch (e) {
         console.error("Data parse error:", e);
@@ -362,8 +404,6 @@ async function createRoom() {
       offer: { type: offer.type, sdp: offer.sdp },
     });
 
-    // FIX: Always use Vercel URL in QR so phone can actually open it
-    // When running locally, localhost is unreachable from the phone
     const origin =
       location.hostname === "localhost" || location.hostname === "127.0.0.1"
         ? "https://gyro-fruit-ninja.vercel.app"
@@ -371,14 +411,22 @@ async function createRoom() {
     const joinUrl = `${origin}/controller.html?room=${roomId}`;
 
     document.getElementById("qrcode").innerHTML = "";
-    new QRCode(document.getElementById("qrcode"), joinUrl);
+    new QRCode(document.getElementById("qrcode"), {
+      text: joinUrl,
+      width: 140,
+      height: 140,
+      correctLevel: QRCode.CorrectLevel.L,
+    });
     statusEl.textContent = "Scan QR to Pair... 📱";
 
+    // 👇 REPLACE THE BROKEN SNAPSHOT BLOCK WITH THIS 👇
     let listeningToGuests = false;
     onSnapshot(doc(db, "rooms", roomId), async (snapshot) => {
       const data = snapshot.data();
       if (data?.answer && !pc.currentRemoteDescription) {
+        // This line fixes the ReferenceError completely:
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+
         if (!listeningToGuests) {
           listeningToGuests = true;
           onSnapshot(
@@ -390,7 +438,9 @@ async function createRoom() {
                     await pc.addIceCandidate(
                       new RTCIceCandidate(change.doc.data()),
                     );
-                  } catch (e) {}
+                  } catch (e) {
+                    console.error("Error adding ICE candidate:", e);
+                  }
                 }
               });
             },
@@ -400,5 +450,27 @@ async function createRoom() {
     });
   } catch (err) {
     statusEl.textContent = `Err: ${err.message}`;
+    updateConnectionState("disconnected");
+  }
+}
+
+// Unified Execution Sequence when Handshake is Verified
+function handleSuccessfulConnection() {
+  statusEl.textContent = "Phone linked! ✅";
+  updateConnectionState("connected");
+
+  // Cleanly pop out modal overlay immediately
+  startOverlay.style.display = "none";
+
+  // Request native fullscreen presentation space layout automatically
+  if (!document.fullscreenElement && gameContainer.requestFullscreen) {
+    gameContainer
+      .requestFullscreen()
+      .catch((err) => console.log("Fullscreen restriction:", err));
+  }
+
+  // Initialize scene loop routines
+  if (window.gameScene && !window.gameScene.gameRunning) {
+    window.gameScene.startGame();
   }
 }
