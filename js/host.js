@@ -20,174 +20,176 @@ document.getElementById("startGameBtn").addEventListener("click", () => {
 // Blade coordinates controlled by physical velocity vectors
 window.bladeX = 400;
 window.bladeY = 250;
-window.targetBladeX = 400;   // FIX: was undefined, causing LERP to break
-window.targetBladeY = 250;   // FIX: was undefined, causing LERP to break
+window.targetBladeX = 400; // FIX: was undefined, causing LERP to break
+window.targetBladeY = 250; // FIX: was undefined, causing LERP to break
 window.isSlashing = false;
 window.score = 0;
-
 class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
   }
 
-  preload() {
-    // Keep this empty since we are creating assets dynamically below
-  }
-
-  createFruitTexture(key, outerColor, innerColor) {
-    let gfx = this.make.graphics({ x: 0, y: 0, add: false });
-    gfx.fillStyle(outerColor, 1);
-    gfx.fillCircle(25, 25, 25);
-    gfx.fillStyle(innerColor, 1);
-    gfx.fillCircle(25, 25, 20);
-    gfx.generateTexture(key, 50, 50);
-    gfx.destroy();
-  }
-
   create() {
     window.gameScene = this;
 
-    // 1. Dojo Background
-    let bgGfx = this.make.graphics({ x: 0, y: 0, add: false });
-    bgGfx.fillStyle(0x3e2723, 1);
-    bgGfx.fillRect(0, 0, 800, 500);
-    bgGfx.lineStyle(4, 0x271714, 1);
-    for (let i = 0; i < 500; i += 50) {
-      bgGfx.strokeLineShape(new Phaser.Geom.Line(0, i, 800, i));
+    // Background
+    const bg = this.make.graphics({ x: 0, y: 0, add: false });
+    bg.fillStyle(0x3e2723, 1);
+    bg.fillRect(0, 0, 800, 500);
+    bg.lineStyle(3, 0x2a1b16);
+    for (let y = 0; y < 500; y += 40) {
+      bg.strokeLineShape(new Phaser.Geom.Line(0, y, 800, y));
     }
-    bgGfx.generateTexture("dojo_bg", 800, 500);
-    bgGfx.destroy();
-
+    bg.generateTexture("dojo_bg", 800, 500);
+    bg.destroy();
     this.add.image(400, 250, "dojo_bg");
 
-    // 2. Fruit Textures
-    this.createFruitTexture("watermelon", 0x4caf50, 0xff5722);
+    // Fruits Setup
+    this.createFruitTexture("watermelon", 0x43a047, 0xff5252);
     this.createFruitTexture("apple", 0xd50000, 0xffffff);
-    this.createFruitTexture("orange", 0xff9800, 0xffe082);
+    this.createFruitTexture("orange", 0xff9800, 0xffcc80);
     this.createFruitTexture("banana", 0xffeb3b, 0xfff59d);
+    this.createFruitTexture("bomb", 0x111111, 0x555555);
 
     this.fruits = this.physics.add.group();
-    this.gameRunning = false;
     this.trailGraphics = this.add.graphics();
     this.trailPoints = [];
-    this.spawnTimer = null;
+    this.gameRunning = false;
+  }
+
+  createFruitTexture(key, outerColor, innerColor) {
+    const gfx = this.make.graphics({ x: 0, y: 0, add: false });
+    gfx.fillStyle(outerColor, 1);
+    gfx.fillCircle(30, 30, 30);
+    gfx.fillStyle(innerColor, 1);
+    gfx.fillCircle(30, 30, 24);
+    gfx.generateTexture(key, 60, 60);
+    gfx.destroy();
+  }
+update() {
+    // 1. USE PHONE COORDINATES (targetBlade) INSTEAD OF MOUSE POINTER
+    const lerp = 0.3;
+    window.bladeX += (window.targetBladeX - window.bladeX) * lerp;
+    window.bladeY += (window.targetBladeY - window.bladeY) * lerp;
+
+    // 2. Trail Logic
+    // We use isSlashing to decide if the trail should exist
+    if (window.isSlashing) {
+      this.trailPoints.push({ x: window.bladeX, y: window.bladeY });
+      if (this.trailPoints.length > 8) this.trailPoints.shift();
+    } else {
+      this.trailPoints = [];
+    }
+
+    this.drawTrail();
+
+    // 3. Collision Detection (as before)
+    if (this.gameRunning && this.trailPoints.length > 2) {
+      for (let i = 1; i < this.trailPoints.length; i++) {
+        const p1 = this.trailPoints[i - 1];
+        const p2 = this.trailPoints[i];
+        const slashLine = new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y);
+
+        this.fruits.getChildren().forEach((fruit) => {
+          if (!fruit.active) return;
+          const b = fruit.getBounds();
+          const hitBox = new Phaser.Geom.Rectangle(
+            b.x - 10,
+            b.y - 10,
+            b.width + 20,
+            b.height + 20,
+          );
+
+          if (Phaser.Geom.Intersects.LineToRectangle(slashLine, hitBox)) {
+            this.sliceFruit(fruit);
+          }
+        });
+      }
+    }
+}
+
+  drawTrail() {
+    this.trailGraphics.clear();
+    for (let i = 1; i < this.trailPoints.length; i++) {
+      const p1 = this.trailPoints[i - 1];
+      const p2 = this.trailPoints[i];
+      const alpha = i / this.trailPoints.length;
+      this.trailGraphics.lineStyle(10, 0x00ffff, alpha);
+      this.trailGraphics.strokeLineShape(
+        new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
+      );
+    }
+  }
+
+  sliceFruit(fruit) {
+    const key = fruit.texture.key;
+    const { x, y } = fruit;
+    fruit.setActive(false).setVisible(false);
+    fruit.destroy();
+
+    if (key === "bomb") {
+      this.gameRunning = false;
+      this.add
+        .text(400, 250, "GAME OVER", {
+          fontSize: "64px",
+          color: "#ff0000",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5);
+      return;
+    }
+
+    // Update Score
+    window.score += 10;
+    scoreTextEl.textContent = window.score;
+
+    // Visual Splash
+    const color = key === "watermelon" ? 0xff5252 : 0xff9800;
+    for (let i = 0; i < 12; i++) {
+      const splash = this.add.circle(x, y, 4, color);
+      this.physics.add.existing(splash);
+      splash.body.setVelocity(
+        Phaser.Math.Between(-300, 300),
+        Phaser.Math.Between(-300, 300),
+      );
+      this.time.delayedCall(500, () => splash.destroy());
+    }
   }
 
   startGame() {
     this.gameRunning = true;
     window.score = 0;
-    scoreTextEl.textContent = window.score;
+    scoreTextEl.textContent = "0";
+    this.scheduleNextWave();
+  }
 
-    if (this.spawnTimer) this.spawnTimer.remove();
-    this.spawnTimer = this.time.addEvent({
-      delay: 1000,
-      callback: this.spawnFruit,
-      callbackScope: this,
-      loop: true,
-    });
+  scheduleNextWave() {
+    if (!this.gameRunning) return;
+    this.spawnFruit();
+    // Faster wave interval
+    this.time.delayedCall(Phaser.Math.Between(500, 1000), () =>
+      this.scheduleNextWave(),
+    );
   }
 
   spawnFruit() {
-    if (!this.gameRunning) return;
+    const x = Phaser.Math.Between(100, 700);
+    const type = Phaser.Utils.Array.GetRandom([
+      "watermelon",
+      "apple",
+      "orange",
+      "banana",
+      "bomb",
+    ]);
+    const fruit = this.fruits.create(x, 550, type);
 
-    const x = Phaser.Math.Between(150, 650);
-    const y = 540;
-
-    const fruitTypes = ["watermelon", "apple", "orange", "banana"];
-    const chosenType = Phaser.Math.RND.pick(fruitTypes);
-
-    const fruit = this.physics.add.sprite(x, y, chosenType);
-    fruit.setCircle(23);
-    fruit.setGravityY(400);
-    fruit.setVelocityX(Phaser.Math.Between(-100, 100));
-    fruit.setVelocityY(Phaser.Math.Between(-620, -720));
-
-    this.fruits.add(fruit);
-  }
-
-  update() {
-    // LERP smoothing — now works correctly since targetBladeX/Y are initialized
-    const lerpFactor = 0.15;
-    window.bladeX += (window.targetBladeX - window.bladeX) * lerpFactor;
-    window.bladeY += (window.targetBladeY - window.bladeY) * lerpFactor;
-
-    if (window.isSlashing) {
-      this.trailPoints.push({ x: window.bladeX, y: window.bladeY });
-      if (this.trailPoints.length > 8) this.trailPoints.shift();
-    } else {
-      if (this.trailPoints.length > 0) this.trailPoints.shift();
-    }
-
-    // Blade trail rendering
-    this.trailGraphics.clear();
-    if (this.trailPoints.length > 1) {
-      for (let i = 1; i < this.trailPoints.length; i++) {
-        const p1 = this.trailPoints[i - 1];
-        const p2 = this.trailPoints[i];
-        const alpha = i / this.trailPoints.length;
-
-        this.trailGraphics.lineStyle(7, 0xe0f7fa, alpha);
-        this.trailGraphics.strokeLineShape(
-          new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y)
-        );
-        this.trailGraphics.lineStyle(3, 0xffffff, alpha);
-        this.trailGraphics.strokeLineShape(
-          new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y)
-        );
-      }
-    }
-
-    // Slice detection
-    if (this.gameRunning && this.trailPoints.length > 1) {
-      const lastPoint = this.trailPoints[this.trailPoints.length - 1];
-      const prevPoint = this.trailPoints[this.trailPoints.length - 2];
-      const slashLine = new Phaser.Geom.Line(
-        prevPoint.x, prevPoint.y,
-        lastPoint.x, lastPoint.y
-      );
-
-      this.fruits.getChildren().forEach((fruit) => {
-        if (fruit && fruit.active) {
-          if (Phaser.Geom.Intersects.LineToRectangle(slashLine, fruit.getBounds())) {
-            this.sliceFruit(fruit);
-          }
-        }
-      });
-    }
-
-    // Remove fallen fruits
-    this.fruits.getChildren().forEach((fruit) => {
-      if (fruit.y > 560 && fruit.body.velocity.y > 0) {
-        fruit.destroy();
-      }
-    });
-  }
-
-  sliceFruit(fruit) {
-    const fx = fruit.x;
-    const fy = fruit.y;
-    const key = fruit.texture.key;
-    fruit.destroy();
-
-    window.score += 10;
-    scoreTextEl.textContent = window.score;
-
-    let splashColor = 0xff5722;
-    if (key === "watermelon") splashColor = 0xff3d00;
-    if (key === "apple") splashColor = 0xffebee;
-    if (key === "orange") splashColor = 0xff9800;
-    if (key === "banana") splashColor = 0xffeb3b;
-
-    for (let i = 0; i < 12; i++) {
-      const part = this.add.circle(fx, fy, Phaser.Math.Between(3, 6), splashColor);
-      this.physics.add.existing(part);
-      part.body.setVelocity(
-        Phaser.Math.Between(-300, 300),
-        Phaser.Math.Between(-300, 300)
-      );
-      part.body.setGravityY(200);
-      this.time.delayedCall(400, () => part.destroy());
-    }
+    // Increased velocity for more challenge
+    fruit.setVelocity(
+      Phaser.Math.Between(-150, 150),
+      Phaser.Math.Between(-1100, -900),
+    );
+    fruit.setAngularVelocity(Phaser.Math.Between(-300, 300));
+    fruit.setGravityY(450); // Stronger gravity for faster fall
   }
 }
 
@@ -254,18 +256,17 @@ async function createRoom() {
       window.isSlashing = true;
       statusEl.textContent = "Phone linked! ✅";
     };
-
-    channel.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        // FIX: Set targetBladeX/Y (not bladeX/Y directly) so LERP smoothing works
-        window.targetBladeX = 400 - data.ax * 45;
-        window.targetBladeY = 250 + data.ay * 45;
-        window.targetBladeX = Math.max(0, Math.min(800, window.targetBladeX));
-        window.targetBladeY = Math.max(0, Math.min(500, window.targetBladeY));
-      } catch (e) {}
-    };
+channel.onmessage = (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    
+    // No more math needed! Just apply the coordinate
+    window.targetBladeX = data.ax;
+    window.targetBladeY = data.ay;
+  } catch (e) {
+    console.error("Data parse error:", e);
+  }
+};
 
     await setDoc(doc(db, "rooms", roomId), {
       joined: false,
@@ -303,12 +304,12 @@ async function createRoom() {
                 if (change.type === "added") {
                   try {
                     await pc.addIceCandidate(
-                      new RTCIceCandidate(change.doc.data())
+                      new RTCIceCandidate(change.doc.data()),
                     );
                   } catch (e) {}
                 }
               });
-            }
+            },
           );
         }
       }
