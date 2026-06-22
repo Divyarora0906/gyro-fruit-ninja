@@ -72,11 +72,9 @@ class GameScene extends Phaser.Scene {
     window.bladeX += (window.targetBladeX - window.bladeX) * lerp;
     window.bladeY += (window.targetBladeY - window.bladeY) * lerp;
 
-    // 2. Trail Logic
-    // We use isSlashing to decide if the trail should exist
     if (window.isSlashing) {
       this.trailPoints.push({ x: window.bladeX, y: window.bladeY });
-      if (this.trailPoints.length > 20) this.trailPoints.shift();
+      if (this.trailPoints.length > 15) this.trailPoints.shift();
     } else {
       this.trailPoints = [];
     }
@@ -121,8 +119,8 @@ class GameScene extends Phaser.Scene {
       const progress = i / this.trailPoints.length;
 
       // Taper the thickness: head is thick (14px), tail is thin
-      const coreThickness = progress * 20;
-      const glowThickness = progress * 35;
+      const coreThickness = progress * 4;
+      const glowThickness = progress * 10;
 
       // Fade out the tail
       const alpha = progress;
