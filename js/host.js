@@ -11,11 +11,6 @@ import {
 const statusEl = document.getElementById("status");
 const scoreTextEl = document.getElementById("scoreText");
 const startOverlay = document.getElementById("startOverlay");
-document.getElementById("createRoomBtn").addEventListener("click", createRoom);
-document.getElementById("startGameBtn").addEventListener("click", () => {
-  startOverlay.style.display = "none";
-  if (window.gameScene) window.gameScene.startGame();
-});
 const restartGameBtn = document.getElementById("restartGameBtn");
 
 document.getElementById("createRoomBtn").addEventListener("click", createRoom);
@@ -80,13 +75,13 @@ class GameScene extends Phaser.Scene {
   }
   update() {
     // 1. USE PHONE COORDINATES (targetBlade) INSTEAD OF MOUSE POINTER
-    const lerp = 0.2;
+    const lerp = 0.12;
     window.bladeX += (window.targetBladeX - window.bladeX) * lerp;
     window.bladeY += (window.targetBladeY - window.bladeY) * lerp;
 
     if (window.isSlashing) {
       this.trailPoints.push({ x: window.bladeX, y: window.bladeY });
-      if (this.trailPoints.length > 15) this.trailPoints.shift();
+      if (this.trailPoints.length > 25) this.trailPoints.shift();
     } else {
       this.trailPoints = [];
     }
@@ -104,10 +99,10 @@ class GameScene extends Phaser.Scene {
           if (!fruit.active) return;
           const b = fruit.getBounds();
           const hitBox = new Phaser.Geom.Rectangle(
-            b.x - 10,
-            b.y - 10,
-            b.width + 20,
-            b.height + 20,
+            b.x - 20,
+            b.y - 20,
+            b.width + 40,
+            b.height + 40,
           );
 
           if (Phaser.Geom.Intersects.LineToRectangle(slashLine, hitBox)) {
@@ -131,20 +126,22 @@ class GameScene extends Phaser.Scene {
       const progress = i / this.trailPoints.length;
 
       // Taper the thickness: head is thick (14px), tail is thin
-      const coreThickness = progress * 4;
-      const glowThickness = progress * 10;
+      const t = Math.sin(progress * Math.PI);
+
+      const coreThickness = 2 + t * 5;
+      const glowThickness = 4 + t * 8;
 
       // Fade out the tail
-      const alpha = progress;
+     const alpha = Math.sin(progress * Math.PI);
 
       // 1. DRAW OUTER GLOW (Cyan/Blue)
-      this.trailGraphics.lineStyle(glowThickness, 0x00e5ff, alpha * 0.5);
+      this.trailGraphics.lineStyle(glowThickness, 0xffffff, alpha * 0.2);
       this.trailGraphics.strokeLineShape(
         new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
       );
-      // Add a circle at the joint to round off jagged edges
-      this.trailGraphics.fillStyle(0x00e5ff, alpha * 0.5);
-      this.trailGraphics.fillCircle(p2.x, p2.y, glowThickness / 2);
+      // // Add a circle at the joint to round off jagged edges
+      // this.trailGraphics.fillStyle(0x00e5ff, alpha * 0.5);
+      // this.trailGraphics.fillCircle(p2.x, p2.y, glowThickness / 2);
 
       // 2. DRAW INNER CORE (White)
       this.trailGraphics.lineStyle(coreThickness, 0xffffff, alpha);
@@ -152,8 +149,8 @@ class GameScene extends Phaser.Scene {
         new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
       );
       // Round off the inner core
-      this.trailGraphics.fillStyle(0xffffff, alpha);
-      this.trailGraphics.fillCircle(p2.x, p2.y, coreThickness / 2);
+      // this.trailGraphics.fillStyle(0xffffff, alpha);
+      // this.trailGraphics.fillCircle(p2.x, p2.y, coreThickness / 2);
     }
   }
   sliceFruit(fruit) {
@@ -174,7 +171,11 @@ class GameScene extends Phaser.Scene {
         .setOrigin(0.5);
 
       // Show the HTML restart button
+      startOverlay.style.display = "flex";
+
       document.getElementById("restartGameBtn").style.display = "block";
+
+      document.getElementById("startGameBtn").style.display = "none";
       return;
     }
 
@@ -202,9 +203,10 @@ class GameScene extends Phaser.Scene {
     this.scheduleNextWave();
   }
   restartGame() {
+    this.gameRunning = false;
     // 1. Wipe out any fruits or bombs still floating on screen
     this.fruits.clear(true, true);
-
+    this.time.removeAllEvents();
     // 2. Wipe the previous trail arrays clean
     this.trailPoints = [];
     this.trailGraphics.clear();
@@ -214,7 +216,16 @@ class GameScene extends Phaser.Scene {
       this.gameOverText.destroy();
       this.gameOverText = null;
     }
+    startOverlay.style.display = "none";
 
+    document.getElementById("startGameBtn").style.display = "block";
+
+    document.getElementById("restartGameBtn").style.display = "none";
+    window.bladeX = 400;
+    window.bladeY = 250;
+    window.targetBladeX = 400;
+    window.targetBladeY = 250;
+    window.isSlashing = false;
     // 4. Safely kick off the game loops again
     this.startGame();
   }
@@ -231,8 +242,13 @@ class GameScene extends Phaser.Scene {
     const x = Phaser.Math.Between(100, 700);
     const type = Phaser.Utils.Array.GetRandom([
       "watermelon",
+      "watermelon",
+      "apple",
       "apple",
       "orange",
+      "orange",
+      "banana",
+      "banana",
       "banana",
       "bomb",
     ]);
