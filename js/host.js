@@ -68,7 +68,7 @@ class GameScene extends Phaser.Scene {
   }
   update() {
     // 1. USE PHONE COORDINATES (targetBlade) INSTEAD OF MOUSE POINTER
-  const lerp = 0.95;
+    const lerp = 0.2;
     window.bladeX += (window.targetBladeX - window.bladeX) * lerp;
     window.bladeY += (window.targetBladeY - window.bladeY) * lerp;
 
@@ -76,7 +76,7 @@ class GameScene extends Phaser.Scene {
     // We use isSlashing to decide if the trail should exist
     if (window.isSlashing) {
       this.trailPoints.push({ x: window.bladeX, y: window.bladeY });
-      if (this.trailPoints.length > 8) this.trailPoints.shift();
+      if (this.trailPoints.length > 20) this.trailPoints.shift();
     } else {
       this.trailPoints = [];
     }
@@ -121,8 +121,8 @@ class GameScene extends Phaser.Scene {
       const progress = i / this.trailPoints.length;
 
       // Taper the thickness: head is thick (14px), tail is thin
-      const coreThickness = progress * 10;
-      const glowThickness = progress * 20;
+      const coreThickness = progress * 20;
+      const glowThickness = progress * 35;
 
       // Fade out the tail
       const alpha = progress;
@@ -288,11 +288,18 @@ async function createRoom() {
       try {
         const data = JSON.parse(event.data);
 
-        window.targetBladeX = data.ax;
-        window.targetBladeY = data.ay;
+        const centerX = 400;
+        const centerY = 250;
 
-        // Automatically turn the slash on/off based on phone movement
-        window.isSlashing = data.isMoving;
+        window.targetBladeX = centerX + (data.swingX || 0) * 25;
+
+        window.targetBladeY = centerY + (data.swingY || 0) * 25;
+
+        window.targetBladeX = Phaser.Math.Clamp(window.targetBladeX, 0, 800);
+
+        window.targetBladeY = Phaser.Math.Clamp(window.targetBladeY, 0, 500);
+
+        window.isSlashing = (data.power || 0) > 8;
       } catch (e) {
         console.error("Data parse error:", e);
       }
