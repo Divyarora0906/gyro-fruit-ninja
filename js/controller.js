@@ -82,10 +82,12 @@ async function startSensors() {
     }
 
     status.textContent = "Sensors active! Swing to slice 🔪";
-
-    window.addEventListener("devicemotion", (event) => {
+window.addEventListener("devicemotion", (event) => {
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
+
+      // Calculate how much the phone is currently moving
+      const movementMagnitude = Math.abs(acc.x || 0) + Math.abs(acc.y || 0);
 
       // Update position logic
       posX += (acc.x || 0) * 0.5;
@@ -95,16 +97,16 @@ async function startSensors() {
       posX = Math.max(0, Math.min(800, posX));
       posY = Math.max(0, Math.min(500, posY));
 
-      // Update shared object
+      // Update shared object AND add the isMoving flag
       motionData.ax = posX;
       motionData.ay = posY;
       motionData.az = (acc.z || 0) - 9.8;
+      motionData.isMoving = movementMagnitude > 1.5; // True if swinging, False if still
 
       // Update UI
       document.getElementById("alphaVal").textContent = posX.toFixed(0);
       document.getElementById("betaVal").textContent = posY.toFixed(0);
     });
-
     // Send data to laptop
     setInterval(() => {
       if (dataChannel?.readyState === "open") {

@@ -66,7 +66,7 @@ class GameScene extends Phaser.Scene {
     gfx.generateTexture(key, 60, 60);
     gfx.destroy();
   }
-update() {
+  update() {
     // 1. USE PHONE COORDINATES (targetBlade) INSTEAD OF MOUSE POINTER
     const lerp = 0.3;
     window.bladeX += (window.targetBladeX - window.bladeX) * lerp;
@@ -106,21 +106,46 @@ update() {
         });
       }
     }
-}
-
+  }
   drawTrail() {
     this.trailGraphics.clear();
+
+    // Don't draw if we don't have enough points
+    if (this.trailPoints.length < 2) return;
+
     for (let i = 1; i < this.trailPoints.length; i++) {
       const p1 = this.trailPoints[i - 1];
       const p2 = this.trailPoints[i];
-      const alpha = i / this.trailPoints.length;
-      this.trailGraphics.lineStyle(10, 0x00ffff, alpha);
+
+      // Calculate progress from 0 (tail) to 1 (head)
+      const progress = i / this.trailPoints.length;
+
+      // Taper the thickness: head is thick (14px), tail is thin
+      const coreThickness = progress * 10;
+      const glowThickness = progress * 20;
+
+      // Fade out the tail
+      const alpha = progress;
+
+      // 1. DRAW OUTER GLOW (Cyan/Blue)
+      this.trailGraphics.lineStyle(glowThickness, 0x00e5ff, alpha * 0.5);
       this.trailGraphics.strokeLineShape(
         new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
       );
+      // Add a circle at the joint to round off jagged edges
+      this.trailGraphics.fillStyle(0x00e5ff, alpha * 0.5);
+      this.trailGraphics.fillCircle(p2.x, p2.y, glowThickness / 2);
+
+      // 2. DRAW INNER CORE (White)
+      this.trailGraphics.lineStyle(coreThickness, 0xffffff, alpha);
+      this.trailGraphics.strokeLineShape(
+        new Phaser.Geom.Line(p1.x, p1.y, p2.x, p2.y),
+      );
+      // Round off the inner core
+      this.trailGraphics.fillStyle(0xffffff, alpha);
+      this.trailGraphics.fillCircle(p2.x, p2.y, coreThickness / 2);
     }
   }
-
   sliceFruit(fruit) {
     const key = fruit.texture.key;
     const { x, y } = fruit;
@@ -256,17 +281,19 @@ async function createRoom() {
       window.isSlashing = true;
       statusEl.textContent = "Phone linked! ✅";
     };
-channel.onmessage = (event) => {
-  try {
-    const data = JSON.parse(event.data);
-    
-    // No more math needed! Just apply the coordinate
-    window.targetBladeX = data.ax;
-    window.targetBladeY = data.ay;
-  } catch (e) {
-    console.error("Data parse error:", e);
-  }
-};
+    channel.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        window.targetBladeX = data.ax;
+        window.targetBladeY = data.ay;
+
+        // Automatically turn the slash on/off based on phone movement
+        window.isSlashing = data.isMoving;
+      } catch (e) {
+        console.error("Data parse error:", e);
+      }
+    };
 
     await setDoc(doc(db, "rooms", roomId), {
       joined: false,
