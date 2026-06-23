@@ -1,0 +1,583 @@
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HapticNinja – Gyroscope Motion-Control Browser Game</title>
+    <meta
+      name="description"
+      content="HapticNinja is a real-time multiplayer browser game where you control a blade using your phone's gyroscope. Scan the QR code, sync your device, and slash enemies in the arena."
+    />
+    <meta
+      name="keywords"
+      content="haptic ninja, gyroscope game, motion control game, phone controlled game, browser game, multiplayer arena game, QR code game, accelerometer game"
+    />
+    <meta name="author" content="Divy Arora" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://haptic.ninja/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="HapticNinja" />
+    <meta
+      property="og:title"
+      content="HapticNinja – Control Your Blade with Your Phone"
+    />
+    <meta
+      property="og:description"
+      content="Scan a QR code, tilt your phone, and slash enemies in real time. A gyroscope-powered multiplayer arena game that runs in your browser."
+    />
+    <meta property="og:url" content="https://haptic.ninja/" />
+    <meta
+      property="og:image"
+      content="https://haptic.ninja/assets/og-image.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="HapticNinja arena with neon orange blade and enemies"
+    />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@HapticNinja" />
+    <meta
+      name="twitter:title"
+      content="HapticNinja – Gyroscope Motion-Control Browser Game"
+    />
+    <meta
+      name="twitter:description"
+      content="Tilt your phone to slash enemies in real time. A free multiplayer arena game powered by your phone's gyroscope."
+    />
+    <meta name="twitter:image" content="https://haptic.ninja/assets/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="HapticNinja game arena screenshot"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "HapticNinja",
+        "description": "A real-time multiplayer browser game where players control a ninja blade using their phone's gyroscope. Scan a QR code to link your device and slash enemies in the arena.",
+        "url": "https://haptic.ninja/",
+        "image": "https://haptic.ninja/assets/og.png",
+        "genre": ["Action", "Multiplayer", "Browser Game"],
+        "gamePlatform": ["Web Browser", "Mobile"],
+        "operatingSystem": "Any",
+        "applicationCategory": "Game",
+        "isAccessibleForFree": true,
+        "inLanguage": "en",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./assets/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./assets/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./assets/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#0c0c10" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <style>
+      :root {
+        --bg-main: #0c0c10;
+        --panel-bg: rgba(26, 26, 36, 0.85);
+        --border-color: rgba(255, 255, 255, 0.08);
+        --neon-orange: #ff9800;
+        --neon-green: #00e676;
+        --neon-red: #ff1744;
+        --neon-cyan: #00e5ff;
+        --font-primary: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Lilita One", sans-serif;
+        font-weight: 100;
+        font-style: normal;
+      }
+
+      body {
+        font-family: var(--font-primary);
+        background: radial-gradient(
+          circle at center,
+          #1e1210 0%,
+          var(--bg-main) 100%
+        );
+        color: #f5f5fa;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow-x: hidden;
+      }
+
+      h1.main-title {
+        font-size: 2.2rem;
+        font-weight: 100;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #fff 30%, var(--neon-orange));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 4px 12px rgba(230, 81, 0, 0.3);
+      }
+
+      .top-ribbon {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 800px;
+        margin-bottom: 15px;
+        background: rgba(26, 26, 36, 0.5);
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        backdrop-filter: blur(8px);
+      }
+
+      .ribbon-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .ribbon-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: rgba(255, 255, 255, 0.4);
+        font-weight: 600;
+      }
+
+      .ribbon-value {
+        font-family: "Courier New", monospace;
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+
+      #game-container {
+        width: 800px;
+        height: 500px;
+        position: relative;
+        border: 6px solid #3e2723;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9);
+        background: #15151e;
+      }
+
+      #arena {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .status-indicator {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 6px 12px;
+        border-radius: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 999;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--neon-red);
+        box-shadow: 0 0 10px var(--neon-red);
+        transition: all 0.3s ease;
+      }
+
+      .dot.healthy {
+        background-color: var(--neon-green);
+        box-shadow: 0 0 12px var(--neon-green);
+      }
+
+      .dot.warning {
+        background-color: var(--neon-orange);
+        box-shadow: 0 0 12px var(--neon-orange);
+      }
+
+      #startOverlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          circle at center,
+          rgba(16, 16, 24, 0.98) 0%,
+          rgba(8, 8, 12, 1) 100%
+        );
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        z-index: 1000;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .overlay-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        max-width: 420px;
+        width: 100%;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+      }
+
+      .overlay-title {
+        font-size: 1.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--neon-orange);
+        text-shadow: 0 0 15px rgba(255, 152, 0, 0.2);
+      }
+
+      .overlay-desc {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.6);
+        line-height: 1.5;
+      }
+
+      .btn-prime {
+        padding: 14px 32px;
+        font-size: 1rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #fff;
+        background: linear-gradient(135deg, #43a047 0%, #1b5e20 100%);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 14px rgba(67, 160, 71, 0.4);
+      }
+
+      .btn-prime:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(67, 160, 71, 0.6);
+        filter: brightness(1.1);
+      }
+
+      #restartGameBtn {
+        background: linear-gradient(
+          135deg,
+          var(--neon-orange) 0%,
+          #e65100 100%
+        );
+        box-shadow: 0 4px 14px rgba(230, 81, 0, 0.4);
+      }
+
+      .qr-wrapper {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px dashed rgba(255, 255, 255, 0.15);
+        animation: fadeIn 0.3s ease-out forwards;
+      }
+
+      #qrcode {
+        background: #fff;
+        padding: 8px;
+        border-radius: 6px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      }
+
+      #qrcode img {
+        display: block;
+      }
+
+      .room-badge {
+        font-size: 0.8rem;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 4px 12px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      #status {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--neon-cyan);
+        letter-spacing: 0.5px;
+      }
+
+      #game-container:fullscreen {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: #0c0c10 !important;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .fullscreen-btn {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #6b7280;
+        padding: 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+
+      .fullscreen-btn:hover {
+        background: rgba(255, 85, 0, 0.1);
+        border-color: #ff5500;
+        color: #ffffff;
+      }
+
+      .fullscreen-btn:active {
+        transform: scale(0.95);
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  </head>
+
+  <body>
+    <!-- Visually hidden but crawlable page description for SEO -->
+    <p
+      style="
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+      "
+    >
+      HapticNinja is a free browser-based multiplayer arena game. Use your
+      phone's gyroscope as a motion controller — scan the QR code to connect,
+      then tilt and slash your way through enemies in real time.
+    </p>
+    <div
+      style="
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        align-items: center;
+        height: 70px;
+      "
+    >
+      <img
+        src="./assets//Haptic.png"
+        alt="HapticNinja logo"
+        width="58"
+        height="58"
+        style="
+          width: 68px;
+          height: 68px;
+          object-fit: contain;
+          /* filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.5)); */
+          border-radius: 10px;
+        "
+      />
+      <h1 class="main-title">Haptic Ninja</h1>
+    </div>
+    <div class="top-ribbon">
+      <div class="ribbon-item">
+        <span class="ribbon-label">Room Allocation:</span>
+        <span
+          id="roomIdDisplay"
+          class="ribbon-value"
+          style="color: var(--neon-orange)"
+          >-</span
+        >
+      </div>
+      <div class="ribbon-item">
+        <button
+          id="fullscreenBtn"
+          class="fullscreen-btn"
+          title="Toggle Fullscreen"
+          aria-label="Toggle fullscreen mode"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            stroke="currentColor"
+            stroke-width="2"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path
+              d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
+            ></path>
+          </svg>
+        </button>
+        <span class="ribbon-label">Total Points:</span>
+        <span
+          id="scoreText"
+          class="ribbon-value"
+          style="color: var(--neon-green)"
+          aria-live="polite"
+          aria-label="Score"
+          >0</span
+        >
+      </div>
+    </div>
+
+    <main id="game-container" aria-label="HapticNinja game arena">
+      <div class="status-indicator" role="status" aria-live="polite">
+        <div id="connDot" class="dot" aria-hidden="true"></div>
+        <span id="connLabel">OFFLINE</span>
+      </div>
+
+      <div id="arena" role="application" aria-label="Game arena"></div>
+
+      <div
+        id="startOverlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+        aria-describedby="modalDesc"
+      >
+        <div class="overlay-card">
+          <h2 id="modalTitle" class="overlay-title">Connect Weapon</h2>
+          <p id="modalDesc" class="overlay-desc">
+            Link your phone using gyroscope tracking data to sync your blade
+            motion controls to the arena grid.
+          </p>
+
+          <button id="createRoomBtn" class="btn-prime">
+            Initialize Setup 🌐
+          </button>
+
+          <div
+            id="qrWrapper"
+            class="qr-wrapper"
+            aria-label="QR code to connect your phone"
+          >
+            <div id="qrcode"></div>
+            <div class="room-badge">
+              ROOM ID:
+              <span
+                id="roomId"
+                style="color: var(--neon-orange); font-weight: 700"
+                >-</span
+              >
+            </div>
+          </div>
+
+          <div id="status" aria-live="polite">STANDBY</div>
+
+          <button id="restartGameBtn" class="btn-prime" style="display: none">
+            Play Again
+          </button>
+        </div>
+      </div>
+    </main>
+    <footer
+      style="
+        margin-top: 16px;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.25);
+        letter-spacing: 0.5px;
+        text-align: center;
+        line-height: 2;
+      "
+    >
+      Built by
+      <a
+        href="https://www.linkedin.com/in/divyarora0906/"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="
+          color: var(--neon-orange);
+          text-decoration: none;
+          font-weight: 700;
+        "
+        aria-label="Divy Arora on LinkedIn"
+        >Divy Arora</a
+      >
+      &nbsp;·&nbsp;
+      <a
+        href="/privacypolicy.html"
+        style="color: rgba(255, 255, 255, 0.35); text-decoration: none"
+        >Privacy Policy</a
+      >
+      &nbsp;·&nbsp;
+      <a
+        href="/terms.html"
+        style="color: rgba(255, 255, 255, 0.35); text-decoration: none"
+        >Terms of Service</a
+      >
+    </footer>
+    <script type="module" src="./js/host.js"></script>
+  </body>
+</html>
