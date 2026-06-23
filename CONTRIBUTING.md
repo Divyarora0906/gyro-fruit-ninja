@@ -1,6 +1,6 @@
-# 🤝 Contributing to Haptic Ninja
+# 🤝 Contributing to blade ninja
 
-Thank you for your interest in contributing to Haptic Ninja! Whether it's fixing a bug, improving the game, or suggesting a new feature — all contributions are welcome.
+Thank you for your interest in contributing to blade ninja! Whether it's fixing a bug, improving the game, or suggesting a new feature — all contributions are welcome.
 
 ---
 
@@ -168,4 +168,4 @@ Have an idea? [Open an issue](https://github.com/Divyarora0906/gyro-fruit-ninja/
 
 ---
 
-<p align="center">Thanks for helping make Haptic Ninja better! 🥷⚔️</p>
+<p align="center">Thanks for helping make blade ninja better! 🥷⚔️</p>

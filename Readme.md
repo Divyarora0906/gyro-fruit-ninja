@@ -1,16 +1,16 @@
-# 🥷 Haptic Ninja
+# 🥷 blade ninja
 
 > Turn your phone into a motion-controlled ninja blade and slash fruits on your laptop in real time.
 
 [![Live Demo](https://res.cloudinary.com/dbwyexls4/image/upload/v1782164784/Jun_23_2026_02_13_39_AM_xax4i4.png)](https://haptic.ninja)
 
-Haptic Ninja is a browser-based multiplayer game inspired by Fruit Ninja. The game runs on a laptop/desktop screen while your phone acts as the controller using its gyroscope sensors. Simply scan a QR code, connect your phone, and start slicing.
+blade ninja is a browser-based multiplayer game inspired by Fruit Ninja. The game runs on a laptop/desktop screen while your phone acts as the controller using its gyroscope sensors. Simply scan a QR code, connect your phone, and start slicing.
 
 ---
 
 ## 📸 Screenshots
 
-![Gameplay](https://res.cloudinary.com/dbwyexls4/image/upload/v1782164784/HapticNinjaHome_b1nm1k.png)
+![Gameplay](https://res.cloudinary.com/dbwyexls4/image/upload/v1782164784/BLADENINJAHome_b1nm1k.png)
 
 ---
 
