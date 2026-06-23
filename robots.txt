@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://haptic.ninja/sitemap.xml
+Sitemap: https://bladeninja.vercel.app/sitemap.xml
